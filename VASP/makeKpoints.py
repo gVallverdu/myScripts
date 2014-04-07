@@ -2,9 +2,20 @@
 # -*- coding=utf-8 -*-
 
 """
-Create a KPOINTS file for a band structure calculation. This script use methods
-of pymatgen in order to compute and select high symetry lines in the first
-brillouin zone.
+Create a KPOINTS file for a band structure calculation. This script use
+methods of pymatgen in order to compute and select high symetry lines
+in the first brillouin zone.
+
+SYNTAX 
+        makeKpoints.py [OPTIONS] [STRUCTURE FILE]
+
+STRUCTURE FILE
+        must contain a structure. For example a POSCAR file.
+
+OPTIONS
+        -d ndiv
+                ndiv is a integer corresponding to the number of 
+                k-points needed along each symetry line
 """
 
 __author__ = "Germain Salvato-Vallverdu"
@@ -12,13 +23,38 @@ __email__ = "germain.vallverdu@univ-pau.fr"
 __licence__ = "GPL"
 __date__ = "April 2014"
 
+import sys
+import os
+
 import pymatgen as mg
 from pymatgen.symmetry.finder import SymmetryFinder
 from pymatgen.symmetry.bandstructure import HighSymmKpath
 from pymatgen.io.vaspio.vasp_input import Kpoints
 
+# default args
+fstruct = "POSCAR"
+ndiv = 20
+
+# read args
+if len(sys.argv) > 1:
+    if len(sys.argv) == 2:
+        fstruct = sys.argv[1]
+    else:
+        fstruct = sys.argv[-1]
+    if "-d" in sys.argv:
+        print(sys.argv)
+        try:
+            ndiv = int(sys.argv[sys.argv.index("-d") + 1])
+        except ValueError, IndexError:
+            print("-d must be followed by an integer")
+            exit(1)
+
 # read structure
-struct = mg.read_structure("POSCAR_NaPO3_A_uniq_a.vasp")
+if os.path.exists(fstruct):
+    struct = mg.read_structure(fstruct)
+else:
+    print("File %s does not exist" % fstruct)
+    exit(1)
 
 # symmetry information
 struct_sym = SymmetryFinder(struct)
@@ -41,5 +77,4 @@ for path in ibz.kpath["path"]:
     print(path)
 
 # write the KPOINTS file
-ndiv = 20
 Kpoints.automatic_linemode(ndiv, ibz).write_file("KPOINTS")
