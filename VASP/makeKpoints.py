@@ -42,7 +42,6 @@ if len(sys.argv) > 1:
     else:
         fstruct = sys.argv[-1]
     if "-d" in sys.argv:
-        print(sys.argv)
         try:
             ndiv = int(sys.argv[sys.argv.index("-d") + 1])
         except ValueError, IndexError:

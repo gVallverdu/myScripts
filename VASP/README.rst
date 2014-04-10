@@ -11,3 +11,7 @@ makeKpoins.py
 anaStruct.py
     Make histograms of distances and angles between atoms in a crystal
     structure read from a POSCAR/CONTCAR VASP file.
+
+bands_Cu.py
+    Build a band diagram with s, p, d contribution mapped on a RGB color scale.
+    This script use pymatgen.
