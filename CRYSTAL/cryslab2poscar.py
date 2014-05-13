@@ -21,11 +21,15 @@ elementsName = ["H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg"
 # --------------------
 # hauteur de vide en A
 # --------------------
-zvide = 18.0
+zvide = 12.0
 
 # ------------------------
 # lecture output CRYSTAL09
 # ------------------------
+if len(sys.argv) != 2:
+    print("ERROR : You must give the CRYSTAL output file name")
+    print("python %s crystal.out" % sys.argv[0])
+    exit(1)
 lignes = open(sys.argv[1], "r").readlines()
 
 sectionCoord = False
