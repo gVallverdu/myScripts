@@ -4,6 +4,9 @@
 """
 Manage VASP job operation
 
+This program do not run the calculation. You have to check the input files
+before !!
+
 SYNTAX 
         v [OPTIONS]
 
@@ -27,8 +30,22 @@ OPTIONS
                 * LREAL  -> deleted
                 * SIGMA  -> deleted
 
+        spb
+            Do the same things as sp but add keywords for a Bader calculation:
+                * LAECHG = True
+                * NGXF   = XXX
+                * NGYF   = YYY
+                * NGZF   = ZZZ
+
+            The values of XXX, YYY and ZZZ are computed from lattice parameters
+            assuming a distance between grid points of 0.03A.
+
         -h, --hep, h, help
             print this help and exit.
+
+REMARK
+        Job files are supposed to begin by 'j' or to have  a '.job' extension.
+        
 """
 
 __author__ = "Germain Salvato-Vallverdu"
@@ -295,3 +312,6 @@ def cleanVasp():
 if __name__ == "__main__":
     check()
     select()
+
+    print("\nCAREFULLY look at the input files before running the calculation")
+
