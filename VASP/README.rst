@@ -3,6 +3,10 @@ VASP scripts
 
 Script concerning post or pre treatments with VASP.
 
+getCharges
+    Compute atomic charges from a Bader caclculations done with the bader
+    program of the University of Texas at Austin.
+
 makeKpoins.py
     Create a KPOINTS file for a band structure calculation. This script use
     methods of pymatgen in order to compute and select high symetry lines in
@@ -15,3 +19,6 @@ anaStruct.py
 bands_Cu.py
     Build a band diagram with s, p, d contribution mapped on a RGB color scale.
     This script use pymatgen.
+
+v
+    Do simple operations to restart calculations with VASP.

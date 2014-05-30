@@ -1,0 +1,297 @@
+#!/usr/bin/env python
+# -*- coding=utf-8 -*-
+
+"""
+Manage VASP job operation
+
+SYNTAX 
+        v [OPTIONS]
+
+OPTIONS
+        clean
+            delete vasp output files
+
+        restart
+            copy necessary files for a restart calculation into a restart
+            directory. None of the copied files are modified.
+
+        sp
+            copy the necessary files for an energy calculation into a 
+            SinglePoint directory. In the new INCAR file, the following 
+            keywords are changed:
+                * NSW    -> NSW = 0
+                * ISMEAR -> ISMEAR = -5
+                * EDIFFG -> deleted
+                * IBRION -> deleted
+                * ISIF   -> deleted
+                * LREAL  -> deleted
+                * SIGMA  -> deleted
+
+        -h, --hep, h, help
+            print this help and exit.
+"""
+
+__author__ = "Germain Salvato-Vallverdu"
+__email__ = "germain.vallverdu@univ-pau.fr"
+__licence__ = "GPL"
+__date__ = "June 2014"
+
+import sys
+import os
+import shutil
+import fnmatch
+from math import sqrt, ceil
+
+options = ["clean", "sp", "spb", "restart", "h", "help", "-h", "--help"]
+
+def check():
+    """ check options """
+
+    if len(sys.argv) != 2:
+        print("ERROR, you must give an option among :")
+        for opt in options:
+            print("\t * " + opt)
+        print(__doc__)
+        exit(1)
+
+    opt = sys.argv[1]
+    if opt not in options:
+        print("You ask for : " + opt)
+        print("ERROR, option unknown, you must give an option among :")
+        for opt in options:
+            print("\t * " + opt)
+        print(__doc__)
+        exit(1)
+
+def select():
+    """ select the operation to do """
+    opt = sys.argv[1].lower()
+
+    if opt == "clean":
+        cleanVasp()
+    elif opt == "sp":
+        makeSP()
+    elif opt == "spb":
+        makeSPBader()
+    elif opt == "restart":
+        makeRestart("restart")
+    elif opt in ["h", "help", "-h", "--help"]:
+        print(__doc__)
+        exit(0)
+    else:
+        print("This option is still not implemented")
+        exit(0)
+
+def question(message):
+    """ ask a question and read answer """
+    answer = None
+    while answer is None:
+        a = raw_input(message + " (y/n) : ")
+        if a.lower()[0] == "n":
+            answer = False
+        elif a.lower()[0] == "y" or a.lower()[0] == "o":
+            answer = True
+        else:
+            print("hit 'y' for yes or 'n' for no")
+    return answer
+
+def makeRestart(dirname):
+    """ copy necessary files for restarting a vasp calculation """
+
+    print("# copying input files")
+    wd = os.getcwd()
+    ndir = os.path.join(wd, dirname)
+
+    # create directory
+    if os.path.exists(ndir):
+        if not question(dirname + " directory exists, continue ? "):
+            exit(0)
+    else:
+        os.mkdir(ndir)
+        
+    # copy input files
+    for f in ["INCAR", "POTCAR", "KPOINTS"]:
+        if os.path.exists(os.path.join(wd, f)):
+            print("cp " + f + " -> " + ndir)
+            shutil.copy(os.path.join(wd, f), ndir)
+        else:
+            print("File {0} does not exist".format(f))
+            print(os.listdir(wd))
+            exit(1)
+
+    # CONTCAR -> POSCAR
+    if os.path.exists(os.path.join(wd, "CONTCAR")):
+        print("cp CONTCAR -> " + os.path.join(ndir, "POSCAR"))
+        shutil.copy(os.path.join(wd, "CONTCAR"), os.path.join(ndir, "POSCAR"))
+    else:
+        print("CONTCAR file not found")
+        print(os.listdir(wd))
+        exit(1)
+
+    # WAVECAR, CHGCAR
+    for f in ["WAVECAR", "CHGCAR"]:
+        if os.path.exists(f) and os.path.getsize(f) != 0:
+            print("cp " + f + " -> " + ndir)
+            shutil.copy(os.path.join(wd, f), ndir)
+
+    # job file
+    jobs  = fnmatch.filter(os.listdir(wd), "j*")
+    jobs += fnmatch.filter(os.listdir(wd), "*.job")
+    jobs = [job for job in jobs if not fnmatch.fnmatchcase(job, "*.o*")]
+    if len(jobs) == 1:
+        print("cp " + jobs[0] + " -> " + ndir)
+        shutil.copy(os.path.join(wd, jobs[0]), ndir)
+    elif len(jobs) > 1:
+        if question("Do you want to select a job file ? "):
+            print("\nSelect a job file among:")
+            for i, job in enumerate(jobs):
+                print("     %d : %s" % (i, job))
+            job = jobs[int(raw_input("job file number = "))]
+            print("cp " + job + " -> " + ndir)
+            shutil.copy(os.path.join(wd, job), ndir)
+    else:
+        print("I did not find a job file, copy it by yourself")
+
+def makeSP():
+    """ copy necessary files for a single point energy calculation into a
+    directory called SinglePoint. The new INCAR file is modified in the
+    following way:
+        * NSW    -> NSW = 0
+        * ISMEAR -> ISMEAR = -5
+        * EDIFFG -> deleted
+        * IBRION -> deleted
+        * ISIF   -> deleted
+        * LREAL  -> deleted
+        * SIGMA  -> deleted
+    """
+
+    wd = os.getcwd()
+    dirname = "SinglePoint"
+    spdir = os.path.join(wd, dirname)
+
+    # copy files
+    makeRestart(dirname)
+
+    # read INCAR and delete or change lines
+    print("\n# Changing INCAR file")
+    incar = open(os.path.join(wd, "INCAR"), "r").readlines()
+
+    lorbit = False
+    dline = list()
+    for i, line in enumerate(incar):
+        for tag in ["EDIFFG", "IBRION", "ISIF", "LREAL", "SIGMA"]:
+            if tag in line:
+                dline.append(line)
+
+        if "NSW" in line:
+            incar[i] = "  NSW = 0\n"
+
+        elif "ISMEAR" in line:
+            incar[i] = "  ISMEAR = -5\n"
+
+        elif "LORBIT" in line:
+            lorbit = True
+
+    # remove selected line
+    for line in dline:
+        incar.remove(line)
+
+    # add some keywords
+    if not lorbit:
+        incar.append("\nAdded tags\n")
+        incar.append("  LORBIT = 11\n")
+
+    # write new INCAR
+    open(os.path.join(spdir, "INCAR"), "w").writelines(incar)
+
+def makeSPBader():
+    """ copy necessary files for a single point energy calculation into a
+    directory called SinglePoint and add specific key words necessary for a
+    bader charges calculation. The new INCAR file is modified in the
+    following way:
+        * NSW    -> NSW = 0
+        * ISMEAR -> ISMEAR = -5
+        * EDIFFG -> deleted
+        * IBRION -> deleted
+        * ISIF   -> deleted
+        * LREAL  -> deleted
+        * SIGMA  -> deleted
+        * LAECHG -> added LAECHG = True
+    """
+
+    wd = os.getcwd()
+    dirname = "SinglePoint"
+    spdir = os.path.join(wd, dirname)
+
+    # set up singlePoint calculation
+    makeSP()
+
+    # read INCAR and delete or change lines
+    print("\n# Adding bader keywords")
+    incar = open(os.path.join(spdir, "INCAR"), "r").readlines()
+
+    dline = list()
+    present = False
+    for i, line in enumerate(incar):
+        for tag in ["LAECHG", "NGXF", "NGYF", "NGZF"]:
+            if tag in line:
+                present = True
+                dline.append(line)
+
+    # remove selected line
+    if present:
+        print("Some bader related keywords are presents and might be modified.")
+        for line in dline:
+            print(line[:-1])
+        if question("\nContinu ?"):
+            for line in dline:
+                incar.remove(line)
+        else:
+            exit(0)
+
+    # read CONTCAR file
+    poscar = open(os.path.join(spdir, "POSCAR"), "r").readlines()
+    scale = float(poscar[1])
+    veca  = [scale * float(x) for x in poscar[2].split()[0:3]]
+    vecb  = [scale * float(x) for x in poscar[3].split()[0:3]]
+    vecc  = [scale * float(x) for x in poscar[4].split()[0:3]]
+    a = sqrt(veca[0]**2 + veca[1]**2 + veca[2]**2)
+    b = sqrt(vecb[0]**2 + vecb[1]**2 + vecb[2]**2)
+    c = sqrt(vecc[0]**2 + vecc[1]**2 + vecc[2]**2)
+
+    # bader grid
+    dx = 0.03
+    ngxf = int(ceil(a / dx / 10.) * 10)
+    ngyf = int(ceil(b / dx / 10.) * 10)
+    ngzf = int(ceil(c / dx / 10.) * 10)
+
+    print("Bader grid :")
+    print("dx = {0} ".format(dx))
+    print("a = %8.3f      NGXF = %d" % (a, ngxf))
+    print("b = %8.3f      NGYF = %d" % (b, ngyf))
+    print("c = %8.3f      NGZF = %d" % (c, ngzf))
+
+    # add bader keywords
+    incar.append("\nBader\n")
+    incar.append("  LAECHG = True\n")
+    incar.append("  NGXF = %d\n" % ngxf)
+    incar.append("  NGYF = %d\n" % ngyf)
+    incar.append("  NGZF = %d\n" % ngzf)
+
+    # write new INCAR
+    open(os.path.join(spdir, "INCAR"), "w").writelines(incar)
+
+def cleanVasp():
+    """ delete vasp output files """
+    wd = os.getcwd()
+    files = ["IBZKPT", "OSZICAR", "XDATCAR", "PCDAT", "DOSCAR", "CONTCAR",
+             "CHG", "CHGCAR", "WAVECAR", "PROCAR", "EIGENVAL", "vasprun.xml",
+             "OUTCAR"]
+    for f in files:
+        if os.path.exists(os.path.join(wd, f)):
+            print("rm " + os.path.join(wd, f))
+            os.remove(os.path.join(wd, f))
+
+if __name__ == "__main__":
+    check()
+    select()

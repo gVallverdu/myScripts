@@ -1,0 +1,144 @@
+#!/usr/bin/env python
+# -*- coding=utf-8 -*-
+
+"""
+getCharges
+----------
+
+NAME
+        getCharges - compute atomic charges from a bader calculation
+
+SYNTAX
+        getCharges [OPTIONS]
+
+DESCRIPTION
+        Compute atomic charges from a Bader caclculations done with the bader program of
+        the University of Texas at Austin :
+
+        http://theory.cm.utexas.edu/bader/
+
+        Requirements :
+            * a ACF.dat file (bader output)
+            * a POSCAR/CONTCAR file of the structure (read atom names).
+            * a POTCAR file (read valence electron)
+
+        options :
+            -h, --help
+                print this help and exit
+"""
+
+import sys
+import os
+from math import sqrt, fabs
+
+import pymatgen as mg
+from pymatgen.io.vaspio.vasp_input import Potcar
+
+__author__ = "Germain Vallverdu <germain.vallverdu@univ-pau.fr>"
+__licence__ = "GPL"
+
+def getCharges():
+    """ compute charges """
+
+    #
+    # print documentation
+    #
+    args = sys.argv
+    if "-h" in args or "--help" in args:
+        print(__doc__)
+        exit(0)
+
+    #
+    # read atom names
+    #
+    if os.path.exists("POSCAR"):
+        struct = mg.read_structure("POSCAR")
+        atomNames = [el.symbol for el in struct.species]
+
+    elif os.path.exists("CONTCAR"):
+        struct = mg.read_structure("CONTCAR")
+        atomNames = [el.symbol for el in struct.species]
+
+    else:
+        print("ERROR : need a POSCAR/CONTCAR file\n")
+        print(__doc__)
+        exit(1)
+
+    nat = len(atomNames)
+
+    # 
+    # read potcar
+    #
+    if os.path.exists("POTCAR"):
+        potcar = Potcar.from_file("POTCAR")
+    else:
+        print("ERROR : need a POTCAR file\n")
+        print(__doc__)
+        exit(1)
+
+    #
+    # System composition and valence electron
+    #
+    valence = dict()
+    for singlePotcar in potcar:
+        print("%3s     POTCAR : %10s     zval : %f" % \
+            (singlePotcar.element, singlePotcar.symbol, singlePotcar.zval))
+        valence[singlePotcar.element] = singlePotcar.zval
+
+    #
+    # read population from ACF.dat file
+    #
+    acf = open("ACF.dat", "r").read().split(80 * "-")[1].split("\n")[1:-1]
+    population = [float(line.split()[4]) for line in acf]
+    if len(population) != nat:
+        print("Error, number of atom in ACF.dat not consistent")
+
+    #
+    # output
+    #
+    print("\n   i  name   Z      pop       charge")
+    print("------------------------------------")
+    for iat in range(nat):
+        charge = valence[atomNames[iat]] - population[iat]
+        print("%4d %4s %4d %10.4f %10.4f" % (iat + 1, atomNames[iat], \
+                valence[atomNames[iat]], population[iat], charge))
+    print("------------------------------------\n")
+
+    #
+    # average charges
+    #
+    avePop = dict()
+    av2Charge = dict()
+    for el in struct.composition.elements:
+        avePop[el.symbol] = 0.
+        av2Charge[el.symbol] = 0.
+
+    print("Composition : {0}\n".format(struct.formula))
+
+    for iat in range(nat):
+        name = atomNames[iat]
+        avePop[name] += population[iat]
+        av2Charge[name] += (valence[name] - population[iat])**2
+
+    print("Averages :")
+    print(" name   Z          charge")
+    print("------------------------------------")
+    for el in struct.composition.elements:
+        nel = struct.composition[el.symbol]
+        name = el.symbol
+        avePop[name] /= nel
+        charge  = valence[name] - avePop[name]
+
+        av2Charge[name] /= nel
+        if fabs(av2Charge[name] - charge**2) < 1e-5:
+            av2Charge[name] = 0.
+        else:
+            av2Charge[name] = sqrt(av2Charge[name] - charge**2)
+
+        print("%4s %4d %10.4f +/- %7.4f" % (name, valence[name], charge, \
+                av2Charge[name]))
+    print("------------------------------------\n")
+
+if __name__ == "__main__":
+    getCharges()
+
