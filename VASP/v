@@ -99,6 +99,9 @@ def select():
         print("This option is still not implemented")
         exit(0)
 
+    if opt in ["sp", "spb", "restart"]:
+        print("\nCAREFULLY look at the input files before running the calculation")
+
 def question(message):
     """ ask a question and read answer """
     answer = None
@@ -312,6 +315,4 @@ def cleanVasp():
 if __name__ == "__main__":
     check()
     select()
-
-    print("\nCAREFULLY look at the input files before running the calculation")
 
