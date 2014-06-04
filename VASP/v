@@ -124,7 +124,7 @@ def makeRestart(dirname):
 
     # create directory
     if os.path.exists(ndir):
-        if not question(dirname + " directory exists, continue ? "):
+        if not question(dirname + " directory exists, continue ?"):
             exit(0)
     else:
         os.mkdir(ndir)
@@ -162,7 +162,7 @@ def makeRestart(dirname):
         print("cp " + jobs[0] + " -> " + ndir)
         shutil.copy(os.path.join(wd, jobs[0]), ndir)
     elif len(jobs) > 1:
-        if question("Do you want to select a job file ? "):
+        if question("Do you want to select a job file ?"):
             print("\nSelect a job file among:")
             for i, job in enumerate(jobs):
                 print("     %d : %s" % (i, job))
@@ -281,6 +281,10 @@ def makeSPBader():
 
     # bader grid
     dx = 0.03
+    if not question("dx = %f \t accept ?" % dx):
+        print("Enter a new dx value")
+        dx = float(raw_input("dx = "))
+        print("dx = %f" % dx)
     ngxf = int(ceil(a / dx / 10.) * 10)
     ngyf = int(ceil(b / dx / 10.) * 10)
     ngzf = int(ceil(c / dx / 10.) * 10)
