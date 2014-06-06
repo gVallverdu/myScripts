@@ -62,6 +62,10 @@ SUB-COMMANDS
             Read core state eigenenergies from OUTCAR file (need pymatgen). The
             atom index start from 1 to the atom number.
 
+        chgsum [CHGCAR1] [CHGCAR2] [factor]
+            Compute CHGCAR1 + factor * CHGCAR2 where CHGCAR are denisty file.
+            This command needs pymatgen.
+
 REMARK
         Job files are supposed to begin by 'j' or to have  a '.job' extension.
 
@@ -83,7 +87,7 @@ from math import sqrt, acos, pi, fabs, ceil
 
 options = ["h", "help", "-h", "--help",
            "clean", "sp", "spb", "restart",
-           "cell", "cl"]
+           "cell", "cl", "chgsum"]
 
 dashedLine = "".join(50 * ["-"])
 
@@ -147,6 +151,8 @@ def select():
         cell() 
     elif opt == "cl":
         coreLevel()
+    elif opt == "chgsum":
+        chgsum()
 
     else:
         die("This option is still not implemented")
@@ -379,7 +385,8 @@ def cell():
         poscar = sys.argv[2]
 
     else:
-        die("Error, bad arguments" + __doc__, 1)
+        die("Error, bad arguments. Try {0} -h to get some \
+            help".format(sys.argv[0]), 1)
 
     # check data
     if not os.path.exists(poscar):
@@ -463,10 +470,67 @@ def coreLevel():
             ao = sys.argv[3]
 
         if cl[iat-1].has_key(ao):
-            print("%2s_%2s = %f eV" % (symbol[iat-1], ao, cl[iat-1][ao][-1]))
+            print("atom %d -> %2s_%2s = %f eV" % (iat, symbol[iat-1], ao, cl[iat-1][ao][-1]))
         else:
             die("Atom index and AO unconsistent.\
                 \n    atom: %s %d\n    AO  : %s" % (symbol[iat-1], iat, ao),1)
+
+    except ImportError:
+        die("\n ## Pymatgen may be not available and I need it to do what you \
+        ask for ##", 1)
+
+def chgsum():
+    """ linear add of CHGCAR files """
+
+    try:
+        from pymatgen.io.vaspio.vasp_output import Chgcar
+
+        scale_factor = 1.
+
+        # command line options
+        if len(sys.argv) == 4:
+            chgcar1 = sys.argv[2]
+            chgcar2 = sys.argv[3]
+
+        elif len(sys.argv) == 5:
+            chgcar1 = sys.argv[2]
+            chgcar2 = sys.argv[3]
+            try:
+                scale_factor = float(sys.argv[4])
+            except ValueError:
+                die("Error, scale_factor must be a number", 1)
+        else:
+            die("Error in arguemnts list. try {0} -h to get some \
+                help".format(sys.argv[0]), 1)
+            
+        # ask if you agree the computation
+        print("I will compute : {0} + {1}*{2}".format(chgcar1, scale_factor,\
+            chgcar2))
+
+        if not question("Do you agree ?"):
+            die()
+
+        # files exist ?
+        if not os.path.exists(chgcar1):
+            die("Error : File '{0}' does not exist !\n".format(chgcar1))
+
+        if not os.path.exists(chgcar2):
+            die("Error : File '{0}' does not exist !\n".format(chgcar2))
+
+        # sum densities
+        print("Reading {0}".format(chgcar1))
+        rho1 = Chgcar.from_file(chgcar1)
+        print("Reading {0}".format(chgcar2))
+        rho2 = Chgcar.from_file(chgcar2)
+        rho_sum = rho1.linear_add(rho2, scale_factor)
+
+        # name of output file
+        print(dashedLine)
+        if os.path.exists("CHGCAR_sum"):
+            if not question("file CHGCAR_sum exists, overwrite it ?"):
+                die()
+        print(" write sum density in : CHGCAR_sum\n" + dashedLine)
+        rho_sum.write_file("CHGCAR_sum")
 
     except ImportError:
         die("\n ## Pymatgen may be not available and I need it to do what you \
