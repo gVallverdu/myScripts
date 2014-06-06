@@ -2,9 +2,9 @@
 # -*- coding=utf-8 -*-
 
 """
-Manage VASP job operation
+Manage VASP job operation and extract interesting data.
 
-This program do not run the calculation. You have to check the input files
+This script does not run the calculation. You have to check the input files
 before !!
 
 SYNTAX 
@@ -58,8 +58,14 @@ SUB-COMMANDS
             must be a POSCAR/CONTCAR file. If [FILENAME] is absent, a list of
             available POSCAR/CONTCAR files in the working directory is printed.
 
+        cl [atom index] [atomic orbital]
+            Read core state eigenenergies from OUTCAR file (need pymatgen). The
+            atom index start from 1 to the atom number.
+
 REMARK
         Job files are supposed to begin by 'j' or to have  a '.job' extension.
+
+        Some functions may need pymatgen module (see http://www.pymatgen.org).
         
 """
 
@@ -77,7 +83,7 @@ from math import sqrt, acos, pi, fabs, ceil
 
 options = ["h", "help", "-h", "--help",
            "clean", "sp", "spb", "restart",
-           "cell"]
+           "cell", "cl"]
 
 dashedLine = "".join(50 * ["-"])
 
@@ -125,14 +131,6 @@ def select():
         if opt in ["h", "help", "-h", "--help"]:
             die(__doc__)
 
-    mg_ok = False
-    try:
-        import pymatgen
-        mg_ok = True
-    except ImportError:
-        print("\n ## No module named pymatgen, some feature will not be \
-               available ##")
-
     # command name 
     opt = sys.argv[1].lower()
 
@@ -147,6 +145,8 @@ def select():
 
     elif opt == "cell":
         cell() 
+    elif opt == "cl":
+        coreLevel()
 
     else:
         die("This option is still not implemented")
@@ -433,6 +433,44 @@ def cell():
     print("beta  = %10.3f" % beta)
     print("gamma = %10.3f" % gamma)
     print(dashedLine)
+
+def coreLevel():
+    """ extract core level """
+
+    try:
+        from pymatgen.io.vaspio.vasp_output import Outcar
+        import pymatgen as mg
+
+        cl = Outcar("OUTCAR").read_core_state_eigen()
+        symbol = [specie.symbol for specie in mg.read_structure("POSCAR").species]
+
+        if len(sys.argv) != 4:
+            print("    atom    Atomic orbital")
+            for iat, cl_at in enumerate(cl):
+                line = "%4s %4d    " % (symbol[iat], iat + 1)
+                line += "   ".join(cl_at.keys())
+                print(line)
+
+            iat = int(raw_input("Atom number : "))
+            ao = raw_input("atomic orbital : ")
+
+        else:
+            try:
+                iat = int(sys.argv[2])
+            except ValueError:
+                die("Error atom number must be an integer", 1)
+
+            ao = sys.argv[3]
+
+        if cl[iat-1].has_key(ao):
+            print("%2s_%2s = %f eV" % (symbol[iat-1], ao, cl[iat-1][ao][-1]))
+        else:
+            die("Atom index and AO unconsistent.\
+                \n    atom: %s %d\n    AO  : %s" % (symbol[iat-1], iat, ao),1)
+
+    except ImportError:
+        die("\n ## Pymatgen may be not available and I need it to do what you \
+        ask for ##", 1)
 
 if __name__ == "__main__":
     check()
