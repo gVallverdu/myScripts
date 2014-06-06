@@ -310,7 +310,7 @@ def cleanVasp():
     wd = os.getcwd()
     files = ["IBZKPT", "OSZICAR", "XDATCAR", "PCDAT", "DOSCAR", "CONTCAR",
              "CHG", "CHGCAR", "WAVECAR", "PROCAR", "EIGENVAL", "vasprun.xml",
-             "OUTCAR"]
+             "OUTCAR", "DYNMAT"]
     for f in files:
         if os.path.exists(os.path.join(wd, f)):
             print("rm " + os.path.join(wd, f))
