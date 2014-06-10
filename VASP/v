@@ -58,9 +58,21 @@ SUB-COMMANDS
             must be a POSCAR/CONTCAR file. If [FILENAME] is absent, a list of
             available POSCAR/CONTCAR files in the working directory is printed.
 
-        cl [atom index] [atomic orbital]
-            Read core state eigenenergies from OUTCAR file (need pymatgen). The
-            atom index start from 1 to the atom number.
+        cl [OPTIONS]
+            Read core state eigenenergies from OUTCAR file (need pymatgen).
+
+            v cl
+                Read the INCAR file and output core state eigenergy of the AO
+                of the atom define by CLNT, CLN and CLL keywords.
+
+            v cl select
+                Output all available core state eigenergies and ask for the
+                atom index and the AO name of the core state.
+
+            c cl [atom index] [atomic orbital]
+                Output the core state eigenergies of the atom and the atomic
+                orbital defined in the options. The first atom index is 1.
+                [atomic orbital] is something like 1s, 2p, 3s ...
 
         chgsum [CHGCAR1] [CHGCAR2] [factor]
             Compute CHGCAR1 + factor * CHGCAR2 where CHGCAR are denisty file.
@@ -444,14 +456,28 @@ def cell():
 def coreLevel():
     """ extract core level """
 
+    AOname = ["s", "p", "d", "f"]
+
     try:
         from pymatgen.io.vaspio.vasp_output import Outcar
+        from pymatgen.io.vaspio.vasp_input import Incar
         import pymatgen as mg
 
         cl = Outcar("OUTCAR").read_core_state_eigen()
         symbol = [specie.symbol for specie in mg.read_structure("POSCAR").species]
 
-        if len(sys.argv) != 4:
+        if len(sys.argv) == 2:
+            # try to read from INCAR
+            incar = Incar.from_file("INCAR")
+            iat = incar["CLNT"]
+
+            n = incar["CLN"]
+            l = incar["CLL"]
+
+            ao = "%d%s" % (n, AOname[l])
+
+        elif sys.argv[2] == "select":
+            # ask for atom number and orbital
             print("    atom    Atomic orbital")
             for iat, cl_at in enumerate(cl):
                 line = "%4s %4d    " % (symbol[iat], iat + 1)
@@ -462,6 +488,7 @@ def coreLevel():
             ao = raw_input("atomic orbital : ")
 
         else:
+            # atom and AO selected from command line
             try:
                 iat = int(sys.argv[2])
             except ValueError:
@@ -469,6 +496,7 @@ def coreLevel():
 
             ao = sys.argv[3]
 
+        # print core state energy
         if cl[iat-1].has_key(ao):
             print("atom %d -> %2s_%2s = %f eV" % (iat, symbol[iat-1], ao, cl[iat-1][ao][-1]))
         else:
