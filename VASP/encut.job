@@ -1,0 +1,109 @@
+#!/bin/bash
+
+# script pour l'optimisation du cut-off
+#
+# Fichier INCAR
+# -------------
+#
+# Céer un fichier nommé INCAR_origine avec au moins les mots clefs suivants
+#
+# ISTART = 0
+# LWAVE = False
+# LCHARG = False
+# ISMEAR = 0; SIGMA = 0.05 (semi-cond, isolants)
+# ISMEAR = 1; SIGMA = 0.2 (metaux)
+#
+# Fichier KPOINTS
+# ---------------
+#
+# On calcule l'énergie uniquement au point Gamma
+#
+# Les resultats sont donnees à la fin des calculs
+#
+# ------------------------------------------------------------------------------
+
+# options SGE
+#$ -q ecpsmp4.q
+#$ -pe pesmp 4
+
+# ------------------------------------------------------------------------------
+
+# dossier de travail (securite)
+workdir=$SGE_O_WORKDIR
+echo "------------------------------------------------------------"
+echo "working directory : " $workdir
+echo "cd $workdir"
+cd $workdir
+
+# chargement des libs
+source /etc/profile.d/modules.sh
+module purge
+module load vasp/5.3.2
+module list
+
+# le chemin vers vasp est defini dans le module
+echo "vasp : `which vasp`"
+echo "------------------------------------------------------------"
+
+# KPOINTS
+echo "kpts grille : 1 point"  > KPOINTS
+echo "0"                     >> KPOINTS
+echo "Gamma"                 >> KPOINTS
+echo " 1 1 1 "               >> KPOINTS
+echo " 0 0 0"                >> KPOINTS
+
+# declaration des variables
+declare -a encut energie
+declare -i i e
+
+# choix des valeurs de ENCUT
+e=250
+i=0
+while (( e < 900 ))
+    do
+        (( e += 50 ))
+        (( i++ ))
+        encut[$i]=$e
+    done
+
+# calculs
+npts=${#encut[*]}
+# boucle sur les valeurs de encut
+for i in $(seq 1 $npts)
+    do
+        # substitution du ENCUT dans le fichier INCAR
+        sed "s/ENCUT =.*/ENCUT = ${encut[$i]}/" < INCAR_origine > INCAR
+
+        # affiche la ligne du ENCUT dans le INCAR
+        echo " ======================================== "
+        echo " ENCUT = ${encut[$i]}"
+        echo " ======================================== "
+        echo " check input : "
+        grep ENCUT INCAR
+        echo ""
+
+        # execution de VASP
+        time $MPI_RUN -np $NSLOTS vasp
+
+        # lecture de l'energie
+        set `tail -n1 OSZICAR`
+        energie[$i]=$5
+
+        # sauvegarde de fichier
+        echo ""
+        echo "recopie des resutlats"
+        cp -v OSZICAR OSZICAR_${encut[$i]}
+        cp -v OUTCAR OUTCAR_${encut[$i]}
+
+    done
+
+# impression des resultats
+echo ""
+echo " ======================================== "
+echo " Nombre de valeurs : " $npts
+echo " ======================================== "
+for i in $(seq 1 $npts)
+    do
+        echo ${encut[$i]} ${energie[$i]}
+    done
+
