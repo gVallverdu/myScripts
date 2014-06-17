@@ -3,6 +3,11 @@ VASP scripts
 
 Script concerning post or pre treatments with VASP.
 
+v
+    Do simple operations to restart calculations with VASP and output some results. Some
+    methods need pymatgen (`http://pymatgen.org`_) to be used. Execute v -h to see the 
+    complete documentation.
+
 getCharges
     Compute atomic charges from a Bader caclculations done with the bader
     program of the University of Texas at Austin.
@@ -20,5 +25,6 @@ bands_Cu.py
     Build a band diagram with s, p, d contribution mapped on a RGB color scale.
     This script use pymatgen.
 
-v
-    Do simple operations to restart calculations with VASP.
+encut.job
+    Bash script to compute gamma point energie as a function of the plane waves cutoff.
+
