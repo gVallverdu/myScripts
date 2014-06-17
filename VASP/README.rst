@@ -8,6 +8,10 @@ v
     methods need pymatgen (`http://pymatgen.org`_) to be used. Execute v -h to see the 
     complete documentation.
 
+scofield.py
+    Python module in order to interpret valence band using DOS and cross
+    section from Scofield paper.
+
 getCharges
     Compute atomic charges from a Bader caclculations done with the bader
     program of the University of Texas at Austin.

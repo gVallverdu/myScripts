@@ -638,7 +638,7 @@ def plot_total_dos(xmlfile="vasprun.xml", tofile=False):
         if run.is_spin:
             xmin, xmax = plt.xlim()
             plt.hlines(0, xmin, xmax, color="k", lw=1)
-            plt.legend(fancybox=True,shadow=True, prop={"size":18})
+            plt.legend(prop={"size":18})
         else:
             ymin, ymax = plt.ylim()
             plt.ylim(0, ymax)
@@ -674,18 +674,18 @@ def plot_proj_dos(xmlfile="vasprun.xml", tofile=False):
         for el, tdos in el_tdos.items():
             el_dos = dos.get_element_spd_dos(el)
             lines = "# Element: %s\n" % el.symbol
-            lines += "# column 1: E - E_fermi\n"
+            lines += "# column 1: E - E_fermi (eV)\n"
             if not run.is_spin:
                 lines += "# column 2: DOS projected on %s\n" % el.symbol
                 lines += "# column 3: DOS projected on AO type s\n"
                 lines += "# column 4: DOS projected on AO type p\n"
                 lines += "# column 5: DOS projected on AO type d\n"
                 for i in xrange(len(dos.energies)):
-                    lines += "%12.7f" % (dos.energies[i] - dos.efermi)
-                    lines += "%12.7f" %  tdos.densities[Spin.up][i]
-                    lines += "%12.7f" %  el_dos["S"][Spin.up][i]
-                    lines += "%12.7f" %  el_dos["P"][Spin.up][i]
-                    lines += "%12.7f" %  el_dos["D"][Spin.up][i]
+                    lines += "%12.7f " % (dos.energies[i] - dos.efermi)
+                    lines += "%12.7f " %  tdos.densities[Spin.up][i]
+                    lines += "%12.7f " %  el_dos["S"][Spin.up][i]
+                    lines += "%12.7f " %  el_dos["P"][Spin.up][i]
+                    lines += "%12.7f " %  el_dos["D"][Spin.up][i]
                     lines += "\n"
 
             else:
@@ -698,15 +698,15 @@ def plot_proj_dos(xmlfile="vasprun.xml", tofile=False):
                 lines += "# column 8: DOS up projected on AO type d\n"
                 lines += "# column 9: DOS down projected on AO type d\n"
                 for i in xrange(len(dos.energies)):
-                    lines += "%12.7f" % (dos.energies[i] - dos.efermi)
-                    lines += "%12.7f" %  tdos.densities[Spin.up][i]
-                    lines += "%12.7f" % -tdos.densities[Spin.down][i]
-                    lines += "%12.7f" %  el_dos["S"][Spin.up][i]
-                    lines += "%12.7f" % -el_dos["S"][Spin.down][i]
-                    lines += "%12.7f" %  el_dos["P"][Spin.up][i]
-                    lines += "%12.7f" % -el_dos["P"][Spin.down][i]
-                    lines += "%12.7f" %  el_dos["D"][Spin.up][i]
-                    lines += "%12.7f" % -el_dos["D"][Spin.down][i]
+                    lines += "%12.7f " % (dos.energies[i] - dos.efermi)
+                    lines += "%12.7f " %  tdos.densities[Spin.up][i]
+                    lines += "%12.7f " % -tdos.densities[Spin.down][i]
+                    lines += "%12.7f " %  el_dos["S"][Spin.up][i]
+                    lines += "%12.7f " % -el_dos["S"][Spin.down][i]
+                    lines += "%12.7f " %  el_dos["P"][Spin.up][i]
+                    lines += "%12.7f " % -el_dos["P"][Spin.down][i]
+                    lines += "%12.7f " %  el_dos["D"][Spin.up][i]
+                    lines += "%12.7f " % -el_dos["D"][Spin.down][i]
                     lines += "\n"
 
             open("DOS_%s.dat" % el.symbol, "w").write(lines)
