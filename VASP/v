@@ -74,6 +74,19 @@ SUB-COMMANDS
                 orbital defined in the options. The first atom index is 1.
                 [atomic orbital] is something like 1s, 2p, 3s ...
 
+        tdos [FILENAME]
+            read DOS from 'vasprun.xml' or from [FILENAME] and plot it using
+            matplotlib (need pymatgen). [FILENAME] must be a valid vasprun.xml
+            file.
+
+        pdos [FILENAME]
+            read projected DOS from 'vasprun.xml' or from [FILENAME] and plot 
+            it using matplotlib (need pymatgen). [FILENAME] must be a valid 
+            vasprun.xml file.
+
+    Compute data
+    ------------
+
         chgsum [CHGCAR1] [CHGCAR2] [factor]
             Compute CHGCAR1 + factor * CHGCAR2 where CHGCAR are denisty file.
             This command needs pymatgen.
@@ -85,10 +98,7 @@ REMARK
         
 """
 
-__author__ = "Germain Salvato-Vallverdu"
-__email__ = "germain.vallverdu@univ-pau.fr"
-__licence__ = "GPL"
-__date__ = "June 2014"
+from __future__ import division, print_function
 
 import sys
 import os
@@ -97,9 +107,15 @@ import fnmatch
 
 from math import sqrt, acos, pi, fabs, ceil
 
+__author__ = "Germain Salvato-Vallverdu"
+__email__ = "germain.vallverdu@univ-pau.fr"
+__licence__ = "GPL"
+__date__ = "June 2014"
+
 options = ["h", "help", "-h", "--help",
            "clean", "sp", "spb", "restart",
-           "cell", "cl", "chgsum"]
+           "cell", "cl", "chgsum",
+           "tdos", "pdos"]
 
 dashedLine = "".join(50 * ["-"])
 
@@ -107,7 +123,7 @@ dashedLine = "".join(50 * ["-"])
 # General functions
 # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
 
-def die(m="", code=0):
+def _die(m="", code=0):
     """ print error and exit """
     print(m)
     exit(code)
@@ -133,19 +149,21 @@ def check():
     """ check options """
 
     if len(sys.argv) < 2:
-        die("\nERROR, you must give a sub-command", 1)
+        _die("\nERROR, you must give a sub-command", 1)
 
     opt = sys.argv[1]
     if opt not in options:
-        die("\nERROR, option '%s' unknown" % opt, 1)
+        _die("\nERROR, option '%s' unknown" % opt, 1)
 
 def select():
     """ select the operation to do """
 
+    wd = os.getcwd()
+
     # help
     for opt in sys.argv:
         if opt in ["h", "help", "-h", "--help"]:
-            die(__doc__)
+            _die(__doc__)
 
     # command name 
     opt = sys.argv[1].lower()
@@ -160,14 +178,49 @@ def select():
         makeRestart("restart")
 
     elif opt == "cell":
-        cell() 
+        # POSCAR file
+        narg = len(sys.argv)
+        if narg == 2:
+            print(wd + ":")
+            posfile  = fnmatch.filter(os.listdir(wd), "POSCAR*")
+            posfile += fnmatch.filter(os.listdir(wd), "CONTCAR*")
+            posfile += fnmatch.filter(os.listdir(wd), "*.vasp")
+            for i, f in enumerate(posfile):
+                print("    %3d -> %s" % (i, f))
+            poscar = posfile[int(raw_input("\nfile number = "))]
+
+        elif narg == 3:
+            poscar = sys.argv[2]
+
+        else:
+            _die("Error, bad arguments.", 1)
+
+        cell(poscar) 
+
     elif opt == "cl":
         coreLevel()
     elif opt == "chgsum":
         chgsum()
 
+    elif opt == "tdos":
+        # xml file name
+        if len(sys.argv) == 2:
+            xmlfile = "vasprun.xml"
+        else:
+            xmlfile = sys.argv[2]
+
+        plot_total_dos(xmlfile)
+
+    elif opt == "pdos":
+        # xml file name
+        if len(sys.argv) == 2:
+            xmlfile = "vasprun.xml"
+        else:
+            xmlfile = sys.argv[2]
+        plot_proj_dos(xmlfile)
+
     else:
-        die("This option is still not implemented")
+        _die("This option is still not implemented")
 
     if opt in ["sp", "spb", "restart"]:
         print("\nCAREFULLY look at the input files before running the calculation")
@@ -186,7 +239,7 @@ def makeRestart(dirname):
     # create directory
     if os.path.exists(ndir):
         if not question(dirname + " directory exists, continue ?"):
-            die()
+            _die()
     else:
         os.mkdir(ndir)
         
@@ -196,14 +249,14 @@ def makeRestart(dirname):
             print("cp " + f + " -> " + ndir)
             shutil.copy(os.path.join(wd, f), ndir)
         else:
-            die("File {0} does not exist".format(f), 1)
+            _die("File {0} does not exist".format(f), 1)
 
     # CONTCAR -> POSCAR
     if os.path.exists(os.path.join(wd, "CONTCAR")):
         print("cp CONTCAR -> " + os.path.join(ndir, "POSCAR"))
         shutil.copy(os.path.join(wd, "CONTCAR"), os.path.join(ndir, "POSCAR"))
     else:
-        die("CONTCAR file not found", 1)
+        _die("CONTCAR file not found", 1)
 
     # WAVECAR, CHGCAR
     for f in ["WAVECAR", "CHGCAR"]:
@@ -324,7 +377,7 @@ def makeSPBader():
             for line in dline:
                 incar.remove(line)
         else:
-            die()
+            _die()
 
     # read CONTCAR file
     poscar = open(os.path.join(spdir, "POSCAR"), "r").readlines()
@@ -377,32 +430,17 @@ def cleanVasp():
 # extract data
 # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
 
-def cell():
-    """ compute and print lattice parameters """
-
-    wd = os.getcwd()
-
-    # POSCAR file
-    narg = len(sys.argv)
-    if narg == 2:
-        print(wd + ":")
-        posfile  = fnmatch.filter(os.listdir(wd), "POSCAR*")
-        posfile += fnmatch.filter(os.listdir(wd), "CONTCAR*")
-        posfile += fnmatch.filter(os.listdir(wd), "*.vasp")
-        for i, f in enumerate(posfile):
-            print("    %3d -> %s" % (i, f))
-        poscar = posfile[int(raw_input("\nfile number = "))]
-
-    elif narg == 3:
-        poscar = sys.argv[2]
-
-    else:
-        die("Error, bad arguments. Try {0} -h to get some \
-            help".format(sys.argv[0]), 1)
+def cell(poscar="CONTCAR"):
+    """ 
+    Compute and print lattice parameters 
+    
+    Args:
+        poscar(string): file name
+    """
 
     # check data
     if not os.path.exists(poscar):
-        die("Error : file {0} does not exist".format(poscar), 1)
+        _die("Error : file {0} does not exist".format(poscar), 1)
 
     # read poscar file
     lines = open(poscar, "r").readlines()
@@ -430,17 +468,17 @@ def cell():
     if fabs(scalbc) < 1.:
         alpha = acos(scalbc) * 180. / pi
     else:
-        die("Error, angle alpha")
+        _die("Error, angle alpha")
 
     if fabs(scalac) < 1.:
         beta = acos(scalac) * 180. / pi
     else:
-        die("Error, angle beta")
+        _die("Error, angle beta")
 
     if fabs(scalab) < 1.:
         gamma = acos(scalab) * 180. / pi
     else:
-        die("Error, angle gamma")
+        _die("Error, angle gamma")
 
     print(dashedLine)
     print(poscar + " : " + title)
@@ -492,20 +530,135 @@ def coreLevel():
             try:
                 iat = int(sys.argv[2])
             except ValueError:
-                die("Error atom number must be an integer", 1)
+                _die("Error atom number must be an integer", 1)
 
             ao = sys.argv[3]
 
         # print core state energy
         if cl[iat-1].has_key(ao):
-            print("atom %d -> %2s_%2s = %f eV" % (iat, symbol[iat-1], ao, cl[iat-1][ao][-1]))
+            print("atom %d -> %2s_%2s = %f eV" % (iat, symbol[iat-1], ao, \
+                cl[iat-1][ao][-1]))
         else:
-            die("Atom index and AO unconsistent.\
-                \n    atom: %s %d\n    AO  : %s" % (symbol[iat-1], iat, ao),1)
+            _die("Atom index and AO unconsistent.\
+                \n    atom: %s %d\n    AO  : %s" % (symbol[iat-1], iat, ao), 1)
 
     except ImportError:
-        die("\n ## Pymatgen may be not available and I need it to do what you \
-        ask for ##", 1)
+        _die("\n ## Pymatgen may be not available ##", 1)
+
+def plot_total_dos(xmlfile="vasprun.xml"):
+    """ Plot total DOS using matplotlib """
+
+    # check xml file
+    if not os.path.exists(xmlfile):
+        _die("File %s does not exist" % xmlfile, 1)
+
+    # import pymatgen and matplotlib
+    try:
+        from pymatgen.io.vaspio.vasp_output import Vasprun
+        from pymatgen.electronic_structure.core import Spin
+    except ImportError:
+        _die("\n ## Pymatgen may be not available ##", 1)
+
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        _die("\n ## Matplotlib may be not available ##", 1)
+
+    # read
+    run = Vasprun(xmlfile, parse_eigen=False)
+
+    # plot
+    font = {'family': 'serif', 'size': 24}
+    plt.rc('font', **font)
+    plt.figure(figsize=(11.69, 8.27)) # A4
+
+    plt.plot(run.tdos.energies - run.efermi, run.tdos.densities[Spin.up],
+        "r-", label="Spin up")
+    if run.is_spin:
+        plt.plot(run.tdos.energies - run.efermi, -run.tdos.densities[Spin.down], 
+            "b-", label="Spin down")
+
+    # set up figure
+    plt.suptitle("Density of states from " + run.filename)
+    plt.xlabel(r"$E - E_{f}$   /   eV")
+    plt.ylabel("Density of states")
+    plt.grid()
+    ymin, ymax = plt.ylim()
+    plt.vlines(0, ymin, ymax, color="k", lw=1, linestyle="--")
+    if run.is_spin:
+        xmin, xmax = plt.xlim()
+        plt.hlines(0, xmin, xmax, color="k", lw=1)
+        plt.legend(fancybox=True,shadow=True)
+    else:
+        ymin, ymax = plt.ylim()
+        plt.ylim(0, ymax)
+
+    plt.show()
+
+def plot_proj_dos(xmlfile="vasprun.xml"):
+    """ Plot projected DOS using matplotlib """
+
+    # check xml file
+    if not os.path.exists(xmlfile):
+        _die("File %s does not exist" % xmlfile, 1)
+
+    # import pymatgen and matplotlib
+    try:
+        from pymatgen.io.vaspio.vasp_output import Vasprun
+        from pymatgen.electronic_structure.core import Spin
+    except ImportError:
+        _die("\n ## Pymatgen may be not available ##", 1)
+
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        _die("\n ## Matplotlib may be not available ##", 1)
+
+    # read
+    run = Vasprun(xmlfile, parse_eigen=False)
+    dos = run.complete_dos
+
+    # plot
+    font = {'family': 'serif', 'size': 20}
+    plt.rc('font', **font)
+    plt.figure(figsize=(11.69, 8.27)) # A4
+
+    colors = {"S": "r-", "P": "g-", "D": "b-"}
+    nplots = len(dos.structure.composition.elements)
+    for i, el in enumerate(dos.structure.composition.elements):
+        el_dos = dos.get_element_spd_dos(el)
+        plt.subplot(nplots,1,i+1)
+        plt.plot(dos.energies - dos.efermi, dos.densities[Spin.up], "k-", 
+            label="total")
+        for orb, pdos in el_dos.items():
+            plt.plot(dos.energies - dos.efermi, pdos[Spin.up], colors[orb],
+                label=orb.lower())
+
+        if run.is_spin:
+            plt.plot(dos.energies - dos.efermi, -dos.densities[Spin.down],
+                "k-")
+            for orb, pdos in el_dos.items():
+                plt.plot(dos.energies - dos.efermi, -pdos[Spin.down],
+                    colors[orb])
+            xmin, xmax = plt.xlim()
+            plt.hlines(0, xmin, xmax, color="k")
+
+        ymin, ymax = plt.ylim()
+        plt.vlines(0, ymin, ymax, color="k", linestyle="-")
+        plt.ylim(ymin, ymax)
+        plt.ylabel("Element : " + el.symbol)
+        plt.grid()
+        plt.legend(prop={"size": "20"})
+    
+    #plt.subplots_adjust(hspace=0.)
+    plt.suptitle("Projected density of states from " + run.filename)
+    plt.xlabel(r"$E - E_{f}$   /   eV")
+
+    plt.show()
+
+# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+# compute things
+# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
 
 def chgsum():
     """ linear add of CHGCAR files """
@@ -526,9 +679,9 @@ def chgsum():
             try:
                 scale_factor = float(sys.argv[4])
             except ValueError:
-                die("Error, scale_factor must be a number", 1)
+                _die("Error, scale_factor must be a number", 1)
         else:
-            die("Error in arguemnts list. try {0} -h to get some \
+            _die("Error in arguemnts list. try {0} -h to get some \
                 help".format(sys.argv[0]), 1)
             
         # ask if you agree the computation
@@ -536,14 +689,14 @@ def chgsum():
             chgcar2))
 
         if not question("Do you agree ?"):
-            die()
+            _die()
 
         # files exist ?
         if not os.path.exists(chgcar1):
-            die("Error : File '{0}' does not exist !\n".format(chgcar1))
+            _die("Error : File '{0}' does not exist !\n".format(chgcar1))
 
         if not os.path.exists(chgcar2):
-            die("Error : File '{0}' does not exist !\n".format(chgcar2))
+            _die("Error : File '{0}' does not exist !\n".format(chgcar2))
 
         # sum densities
         print("Reading {0}".format(chgcar1))
@@ -556,13 +709,12 @@ def chgsum():
         print(dashedLine)
         if os.path.exists("CHGCAR_sum"):
             if not question("file CHGCAR_sum exists, overwrite it ?"):
-                die()
+                _die()
         print(" write sum density in : CHGCAR_sum\n" + dashedLine)
         rho_sum.write_file("CHGCAR_sum")
 
     except ImportError:
-        die("\n ## Pymatgen may be not available and I need it to do what you \
-        ask for ##", 1)
+        _die("\n ## Pymatgen may be not available ##", 1)
 
 if __name__ == "__main__":
     check()
