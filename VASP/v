@@ -74,15 +74,20 @@ SUB-COMMANDS
                 orbital defined in the options. The first atom index is 1.
                 [atomic orbital] is something like 1s, 2p, 3s ...
 
-        tdos [FILENAME]
-            read DOS from 'vasprun.xml' or from [FILENAME] and plot it using
-            matplotlib (need pymatgen). [FILENAME] must be a valid vasprun.xml
-            file.
+        tdos ['FILENAME', tofile]
+            read DOS from 'vasprun.xml' or from 'FILENAME' and plot it using
+            matplotlib (need pymatgen). 'FILENAME' must be a valid vasprun.xml
+            file. 
+            If tofile is present, the total DOS is printed into a file named
+            'total_DOS.dat'.
 
-        pdos [FILENAME]
-            read projected DOS from 'vasprun.xml' or from [FILENAME] and plot 
-            it using matplotlib (need pymatgen). [FILENAME] must be a valid 
+        pdos ['FILENAME', tofile]
+            read projected DOS from 'vasprun.xml' or from 'FILENAME' and plot
+            it using matplotlib (need pymatgen). 'FILENAME' must be a valid 
             vasprun.xml file.
+            If tofile is present, for each element, projected DOS are printed
+            into a file named 'DOS_X.dat' where X is the symbol of the
+            element.
 
     Compute data
     ------------
@@ -203,21 +208,50 @@ def select():
         chgsum()
 
     elif opt == "tdos":
-        # xml file name
-        if len(sys.argv) == 2:
-            xmlfile = "vasprun.xml"
-        else:
-            xmlfile = sys.argv[2]
+        tofile = False
+        xmlfile = "vasprun.xml"
 
-        plot_total_dos(xmlfile)
+        if len(sys.argv) == 3:
+            if sys.argv[2] == "tofile":
+                tofile = True
+            else:
+                xmlfile = sys.argv[2]
+        elif len(sys.argv) == 4:
+            if sys.argv[2] == "tofile":
+                xmlfile = sys.argv[3]
+                tofile = True
+            elif sys.argv[3] == "tofile":
+                xmlfile = sys.argv[2]
+                tofile = True
+            else:
+                _die("Error, bad arguments", 1)
+        elif len(sys.argv) > 4:
+            _die("Error, you gave too much arguments", 1)
+
+        plot_total_dos(xmlfile, tofile)
 
     elif opt == "pdos":
-        # xml file name
-        if len(sys.argv) == 2:
-            xmlfile = "vasprun.xml"
-        else:
-            xmlfile = sys.argv[2]
-        plot_proj_dos(xmlfile)
+        tofile = False
+        xmlfile = "vasprun.xml"
+
+        if len(sys.argv) == 3:
+            if sys.argv[2] == "tofile":
+                tofile = True
+            else:
+                xmlfile = sys.argv[2]
+        elif len(sys.argv) == 4:
+            if sys.argv[2] == "tofile":
+                xmlfile = sys.argv[3]
+                tofile = True
+            elif sys.argv[3] == "tofile":
+                xmlfile = sys.argv[2]
+                tofile = True
+            else:
+                _die("Error, bad arguments", 1)
+        elif len(sys.argv) > 4:
+            _die("Error, you gave too much arguments", 1)
+
+        plot_proj_dos(xmlfile, tofile)
 
     else:
         _die("This option is still not implemented")
@@ -545,7 +579,7 @@ def coreLevel():
     except ImportError:
         _die("\n ## Pymatgen may be not available ##", 1)
 
-def plot_total_dos(xmlfile="vasprun.xml"):
+def plot_total_dos(xmlfile="vasprun.xml", tofile=False):
     """ Plot total DOS using matplotlib """
 
     # check xml file
@@ -559,43 +593,59 @@ def plot_total_dos(xmlfile="vasprun.xml"):
     except ImportError:
         _die("\n ## Pymatgen may be not available ##", 1)
 
-    try:
-        import matplotlib.pyplot as plt
-    except ImportError:
-        _die("\n ## Matplotlib may be not available ##", 1)
+    if not tofile:
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError:
+            _die("\n ## Matplotlib may be not available ##", 1)
 
     # read
     run = Vasprun(xmlfile, parse_eigen=False)
 
-    # plot
-    font = {'family': 'serif', 'size': 24}
-    plt.rc('font', **font)
-    plt.figure(figsize=(11.69, 8.27)) # A4
+    if tofile:
+        if not run.is_spin:
+            lines = "#  E - Ef       total\n"
+            for e, tdos in zip(run.tdos.energies, run.tdos.densities[Spin.up]):
+                lines += "%12.7f %12.7f\n" % (e - run.efermi, tdos)
+        else:
+            lines = "#  E - Ef        Spin up      Spin down\n"
+            for e, up, down in zip(run.tdos.energies, \
+                    run.tdos.densities[Spin.up], \
+                    run.tdos.densities[Spin.down]):
+                lines += "%12.7f %12.7f %12.7f\n" % (e - run.efermi, up, -down)
+        open("total_DOS.dat", "w").write(lines)
 
-    plt.plot(run.tdos.energies - run.efermi, run.tdos.densities[Spin.up],
-        "r-", label="Spin up")
-    if run.is_spin:
-        plt.plot(run.tdos.energies - run.efermi, -run.tdos.densities[Spin.down], 
-            "b-", label="Spin down")
-
-    # set up figure
-    plt.suptitle("Density of states from " + run.filename)
-    plt.xlabel(r"$E - E_{f}$   /   eV")
-    plt.ylabel("Density of states")
-    plt.grid()
-    ymin, ymax = plt.ylim()
-    plt.vlines(0, ymin, ymax, color="k", lw=1, linestyle="--")
-    if run.is_spin:
-        xmin, xmax = plt.xlim()
-        plt.hlines(0, xmin, xmax, color="k", lw=1)
-        plt.legend(fancybox=True,shadow=True)
     else:
+        # plot
+        font = {'family': 'serif', 'size': 20}
+        plt.rc('font', **font)
+        plt.figure(figsize=(11.69, 8.27)) # A4
+
+        plt.plot(run.tdos.energies - run.efermi, run.tdos.densities[Spin.up],
+            "r-", label="Spin up")
+        if run.is_spin:
+            plt.plot(run.tdos.energies - run.efermi, -run.tdos.densities[Spin.down], 
+                "b-", label="Spin down")
+
+        # set up figure
+        plt.title("Density of states of " + \
+            run.initial_structure.composition.reduced_formula)
+        plt.xlabel(r"$E - E_{f}$   /   eV")
+        plt.ylabel("Density of states")
+        plt.grid()
         ymin, ymax = plt.ylim()
-        plt.ylim(0, ymax)
+        plt.vlines(0, ymin, ymax, color="k", lw=1, linestyle="--")
+        if run.is_spin:
+            xmin, xmax = plt.xlim()
+            plt.hlines(0, xmin, xmax, color="k", lw=1)
+            plt.legend(fancybox=True,shadow=True, prop={"size":18})
+        else:
+            ymin, ymax = plt.ylim()
+            plt.ylim(0, ymax)
 
-    plt.show()
+        plt.show()
 
-def plot_proj_dos(xmlfile="vasprun.xml"):
+def plot_proj_dos(xmlfile="vasprun.xml", tofile=False):
     """ Plot projected DOS using matplotlib """
 
     # check xml file
@@ -609,52 +659,97 @@ def plot_proj_dos(xmlfile="vasprun.xml"):
     except ImportError:
         _die("\n ## Pymatgen may be not available ##", 1)
 
-    try:
-        import matplotlib.pyplot as plt
-    except ImportError:
-        _die("\n ## Matplotlib may be not available ##", 1)
+    if not tofile:
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError:
+            _die("\n ## Matplotlib may be not available ##", 1)
 
     # read
     run = Vasprun(xmlfile, parse_eigen=False)
     dos = run.complete_dos
 
-    # plot
-    font = {'family': 'serif', 'size': 20}
-    plt.rc('font', **font)
-    plt.figure(figsize=(11.69, 8.27)) # A4
+    if tofile:
+        el_tdos = dos.get_element_dos()
+        for el, tdos in el_tdos.items():
+            el_dos = dos.get_element_spd_dos(el)
+            lines = "# Element: %s\n" % el.symbol
+            lines += "# column 1: E - E_fermi\n"
+            if not run.is_spin:
+                lines += "# column 2: DOS projected on %s\n" % el.symbol
+                lines += "# column 3: DOS projected on AO type s\n"
+                lines += "# column 4: DOS projected on AO type p\n"
+                lines += "# column 5: DOS projected on AO type d\n"
+                for i in xrange(len(dos.energies)):
+                    lines += "%12.7f" % (dos.energies[i] - dos.efermi)
+                    lines += "%12.7f" %  tdos.densities[Spin.up][i]
+                    lines += "%12.7f" %  el_dos["S"][Spin.up][i]
+                    lines += "%12.7f" %  el_dos["P"][Spin.up][i]
+                    lines += "%12.7f" %  el_dos["D"][Spin.up][i]
+                    lines += "\n"
 
-    colors = {"S": "r-", "P": "g-", "D": "b-"}
-    nplots = len(dos.structure.composition.elements)
-    for i, el in enumerate(dos.structure.composition.elements):
-        el_dos = dos.get_element_spd_dos(el)
-        plt.subplot(nplots,1,i+1)
-        plt.plot(dos.energies - dos.efermi, dos.densities[Spin.up], "k-", 
-            label="total")
-        for orb, pdos in el_dos.items():
-            plt.plot(dos.energies - dos.efermi, pdos[Spin.up], colors[orb],
-                label=orb.lower())
+            else:
+                lines += "# column 2: DOS up projected on %s\n" % el.symbol
+                lines += "# column 3: DOS down projected on %s\n" % el.symbol
+                lines += "# column 4: DOS up projected on AO type s\n"
+                lines += "# column 5: DOS down projected on AO type s\n"
+                lines += "# column 6: DOS up projected on AO type p\n"
+                lines += "# column 7: DOS down projected on AO type p\n"
+                lines += "# column 8: DOS up projected on AO type d\n"
+                lines += "# column 9: DOS down projected on AO type d\n"
+                for i in xrange(len(dos.energies)):
+                    lines += "%12.7f" % (dos.energies[i] - dos.efermi)
+                    lines += "%12.7f" %  tdos.densities[Spin.up][i]
+                    lines += "%12.7f" % -tdos.densities[Spin.down][i]
+                    lines += "%12.7f" %  el_dos["S"][Spin.up][i]
+                    lines += "%12.7f" % -el_dos["S"][Spin.down][i]
+                    lines += "%12.7f" %  el_dos["P"][Spin.up][i]
+                    lines += "%12.7f" % -el_dos["P"][Spin.down][i]
+                    lines += "%12.7f" %  el_dos["D"][Spin.up][i]
+                    lines += "%12.7f" % -el_dos["D"][Spin.down][i]
+                    lines += "\n"
 
-        if run.is_spin:
-            plt.plot(dos.energies - dos.efermi, -dos.densities[Spin.down],
-                "k-")
+            open("DOS_%s.dat" % el.symbol, "w").write(lines)
+
+    else:
+        # plot
+        font = {'family': 'serif', 'size': 20}
+        plt.rc('font', **font)
+        plt.figure(figsize=(11.69, 8.27)) # A4
+
+        colors = {"S": "r-", "P": "g-", "D": "b-"}
+        nplots = len(dos.structure.composition.elements)
+        for i, el in enumerate(dos.structure.composition.elements):
+            el_dos = dos.get_element_spd_dos(el)
+            plt.subplot(nplots,1,i+1)
+            plt.plot(dos.energies - dos.efermi, dos.densities[Spin.up], "k-", 
+                label="total")
             for orb, pdos in el_dos.items():
-                plt.plot(dos.energies - dos.efermi, -pdos[Spin.down],
-                    colors[orb])
-            xmin, xmax = plt.xlim()
-            plt.hlines(0, xmin, xmax, color="k")
+                plt.plot(dos.energies - dos.efermi, pdos[Spin.up], colors[orb],
+                    label=orb.lower())
 
-        ymin, ymax = plt.ylim()
-        plt.vlines(0, ymin, ymax, color="k", linestyle="-")
-        plt.ylim(ymin, ymax)
-        plt.ylabel("Element : " + el.symbol)
-        plt.grid()
-        plt.legend(prop={"size": "20"})
-    
-    #plt.subplots_adjust(hspace=0.)
-    plt.suptitle("Projected density of states from " + run.filename)
-    plt.xlabel(r"$E - E_{f}$   /   eV")
+            if run.is_spin:
+                plt.plot(dos.energies - dos.efermi, -dos.densities[Spin.down],
+                    "k-")
+                for orb, pdos in el_dos.items():
+                    plt.plot(dos.energies - dos.efermi, -pdos[Spin.down],
+                        colors[orb])
+                xmin, xmax = plt.xlim()
+                plt.hlines(0, xmin, xmax, color="k")
 
-    plt.show()
+            ymin, ymax = plt.ylim()
+            plt.vlines(0, ymin, ymax, color="k", linestyle="-")
+            plt.ylim(ymin, ymax)
+            plt.ylabel("Element : " + el.symbol)
+            plt.grid()
+            plt.legend(prop={"size": "18"})
+        
+        #plt.subplots_adjust(hspace=0.)
+        plt.suptitle("Projected DOS of elements of " + \
+            run.initial_structure.composition.reduced_formula)
+        plt.xlabel(r"$E - E_{f}$   /   eV")
+
+        plt.show()
 
 # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
 # compute things
