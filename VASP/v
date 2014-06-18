@@ -89,6 +89,10 @@ SUB-COMMANDS
             into a file named 'DOS_X.dat' where X is the symbol of the
             element.
 
+        mag
+            read OUTCAR and POSCAR file and print magnetization of each atom at
+            the last ionic step.
+
     Compute data
     ------------
 
@@ -120,7 +124,7 @@ __date__ = "June 2014"
 options = ["h", "help", "-h", "--help",
            "clean", "sp", "spb", "restart",
            "cell", "cl", "chgsum",
-           "tdos", "pdos"]
+           "tdos", "pdos", "mag"]
 
 dashedLine = "".join(50 * ["-"])
 
@@ -252,6 +256,9 @@ def select():
             _die("Error, you gave too much arguments", 1)
 
         plot_proj_dos(xmlfile, tofile)
+
+    elif opt == "mag":
+        get_mag()
 
     else:
         _die("This option is still not implemented")
@@ -751,6 +758,41 @@ def plot_proj_dos(xmlfile="vasprun.xml", tofile=False):
 
         plt.show()
 
+def get_mag():
+    """ Read OUTCAR and POSCAR file and print magnetization """
+
+    # import pymatgen
+    try:
+        from pymatgen.io.vaspio.vasp_output import Outcar
+        from pymatgen.io.vaspio.vasp_input import Poscar
+    except ImportError:
+        _die("\n ## Pymatgen may be not available ##", 1)
+
+    # check files exist
+    for f in ["POSCAR", "OUTCAR"]:
+        if not os.path.exists(f):
+            _die("File %s is needed and does not exist" % f, 1)
+
+    # read
+    outcar = Outcar("OUTCAR")
+    if len(outcar.magnetization) == 0:
+        _die("Magnetization not found in OUTCAR file. Check INCAR", 1)
+
+    # print
+    p = Poscar.from_file("POSCAR")
+    print("# magnetization for each atom")
+    print("# ---------------------------------------")
+    print("# iat name   s       p       d       tot")
+    print("# ---------------------------------------")
+    iat = 0
+    for site, mag in zip(p.structure.sites, outcar.magnetization):
+        iat += 1
+        line = "%4d %4s" % (iat, site.specie.symbol)
+        for val in mag.values():
+            line += "%8.3f" % val
+        print(line)
+    print("# ---------------------------------------")
+    
 # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
 # compute things
 # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
