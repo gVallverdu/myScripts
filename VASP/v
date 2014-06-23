@@ -106,6 +106,11 @@ SUB-COMMANDS
             Compute CHGCAR1 + factor * CHGCAR2 where CHGCAR are denisty file.
             This command needs pymatgen.
 
+        dep [FILE1, FILE2]
+            Compute displacements of all atoms in two structures. By default,
+            the vasprun.xml file is read and initial and final structures are
+            compared. Two POSCAR/CONTCAR file can be also given in arguements.
+
 REMARK
         Job files are supposed to begin by 'j' or to have  a '.job' extension.
 
@@ -164,7 +169,7 @@ def check():
     options = ["h", "help", "-h", "--help",
                "clean", "sp", "spb", "restart",
                "cell", "cl", "chgsum", "charges",
-               "tdos", "pdos", "mag"]
+               "tdos", "pdos", "mag", "dep"]
 
     opt = sys.argv[1]
     if opt not in options:
@@ -214,8 +219,6 @@ def select():
 
     elif opt == "cl":
         coreLevel()
-    elif opt == "chgsum":
-        chgsum()
 
     elif opt == "tdos":
         tofile = False
@@ -272,6 +275,21 @@ def select():
         else:
             filename = None
         charges(filename)
+
+    elif opt == "chgsum":
+        chgsum()
+
+    elif opt == "dep":
+        xmlfile = "vasprun.xml"
+        fs1 = fs2 = None
+        if len(sys.argv) == 3:
+            xmlfile = sys.argv[2]
+        elif len(sys.argv) == 4:
+            xmlfile = None
+            fs1 = sys.argv[2]
+            fs2 = sys.argv[3]
+
+        get_deplacement(xmlfile, fs1, fs2)
 
     else:
         _die("This option is still not implemented")
@@ -933,56 +951,118 @@ def chgsum():
 
     try:
         from pymatgen.io.vaspio.vasp_output import Chgcar
-
-        scale_factor = 1.
-
-        # command line options
-        if len(sys.argv) == 4:
-            chgcar1 = sys.argv[2]
-            chgcar2 = sys.argv[3]
-
-        elif len(sys.argv) == 5:
-            chgcar1 = sys.argv[2]
-            chgcar2 = sys.argv[3]
-            try:
-                scale_factor = float(sys.argv[4])
-            except ValueError:
-                _die("Error, scale_factor must be a number", 1)
-        else:
-            _die("Error in arguemnts list. try {0} -h to get some \
-                help".format(sys.argv[0]), 1)
-            
-        # ask if you agree the computation
-        print("I will compute : {0} + {1}*{2}".format(chgcar1, scale_factor,\
-            chgcar2))
-
-        if not question("Do you agree ?"):
-            _die()
-
-        # files exist ?
-        if not os.path.exists(chgcar1):
-            _die("Error : File '{0}' does not exist !\n".format(chgcar1))
-
-        if not os.path.exists(chgcar2):
-            _die("Error : File '{0}' does not exist !\n".format(chgcar2))
-
-        # sum densities
-        print("Reading {0}".format(chgcar1))
-        rho1 = Chgcar.from_file(chgcar1)
-        print("Reading {0}".format(chgcar2))
-        rho2 = Chgcar.from_file(chgcar2)
-        rho_sum = rho1.linear_add(rho2, scale_factor)
-
-        # name of output file
-        print(dashedLine)
-        if os.path.exists("CHGCAR_sum"):
-            if not question("file CHGCAR_sum exists, overwrite it ?"):
-                _die()
-        print(" write sum density in : CHGCAR_sum\n" + dashedLine)
-        rho_sum.write_file("CHGCAR_sum")
-
     except ImportError:
         _die("\n ## Pymatgen may be not available ##", 1)
+
+    scale_factor = 1.
+
+    # command line options
+    if len(sys.argv) == 4:
+        chgcar1 = sys.argv[2]
+        chgcar2 = sys.argv[3]
+
+    elif len(sys.argv) == 5:
+        chgcar1 = sys.argv[2]
+        chgcar2 = sys.argv[3]
+        try:
+            scale_factor = float(sys.argv[4])
+        except ValueError:
+            _die("Error, scale_factor must be a number", 1)
+    else:
+        _die("Error in arguemnts list. try {0} -h to get some \
+            help".format(sys.argv[0]), 1)
+        
+    # ask if you agree the computation
+    print("I will compute : {0} + {1}*{2}".format(chgcar1, scale_factor,\
+        chgcar2))
+
+    if not question("Do you agree ?"):
+        _die()
+
+    # files exist ?
+    if not os.path.exists(chgcar1):
+        _die("Error : File '{0}' does not exist !\n".format(chgcar1))
+
+    if not os.path.exists(chgcar2):
+        _die("Error : File '{0}' does not exist !\n".format(chgcar2))
+
+    # sum densities
+    print("Reading {0}".format(chgcar1))
+    rho1 = Chgcar.from_file(chgcar1)
+    print("Reading {0}".format(chgcar2))
+    rho2 = Chgcar.from_file(chgcar2)
+    rho_sum = rho1.linear_add(rho2, scale_factor)
+
+    # name of output file
+    print(dashedLine)
+    if os.path.exists("CHGCAR_sum"):
+        if not question("file CHGCAR_sum exists, overwrite it ?"):
+            _die()
+    print(" write sum density in : CHGCAR_sum\n" + dashedLine)
+    rho_sum.write_file("CHGCAR_sum")
+
+def get_deplacement(xmlfile="vasprun.xml", fs1=None, fs2=None):
+    """ get displacement between two structures """
+
+    import numpy as np
+    try:
+        from pymatgen.io.vaspio.vasp_output import Vasprun
+        import pymatgen as mg
+    except ImportError:
+        _die("\n ## Pymatgen may be not available ##", 1)
+
+    if xmlfile:
+        if not os.path.exists(xmlfile):
+            _die("ERROR, file %s does not exist" % xmlfile, 1)
+
+        run = Vasprun(xmlfile)
+        struct1 = run.initial_structure
+        struct2 = run.final_structure
+
+    elif fs1 and fs2:
+        if not os.path.exists(fs1):
+            _die("ERROR, file %s does not exist" % fs1, 1)
+        if not os.path.exists(fs2):
+            _die("ERROR, file %s does not exist" % fs2, 1)
+        struct1 = mg.read_structure(fs1)
+        struct2 = mg.read_structure(fs2)
+
+        if len(struct1.sites) != len(struct2.sites):
+            _die("ERROR, structures are unconsistant", 1)
+
+    else:
+        _die("ERROR, you must give two structures or an xml file", 1)
+
+    print("Structure 1 : " + struct1.composition.reduced_formula)
+    print("abc      : %10.4f %10.4f %10.4f" % struct1.lattice.abc)
+    print("angles   : %10.4f %10.4f %10.4f" % struct1.lattice.angles)
+
+    print("\nStructure 2 : " + struct2.composition.reduced_formula)
+    print("abc      : %10.4f %10.4f %10.4f" % struct2.lattice.abc)
+    print("angles   : %10.4f %10.4f %10.4f" % struct2.lattice.angles)
+
+    # compute atoms displacement
+    print("\n" + 75 * "-")
+    print("   atome    positions initiales          positions finales       distance")
+    print(75 * "-")
+    iat = 0
+    for site1, site2 in zip(struct1, struct2):
+        iat += 1
+        ligne = "%4d%4s" % (iat, site1.specie.symbol)
+        for x in site1.coords:
+            ligne += "%8.3f" % x
+
+        ligne += "    "
+        for x in site2.coords:
+            ligne += "%8.3f" % x
+
+        ligne += "    "
+        d, j = site1.distance_and_image(site2)
+        ligne += "%8.3f" % d
+        if (j != np.zeros(3)).all():
+            ligne += "(%2d,%2d,%2d)" % j.tuple
+
+        print(ligne)
 
 if __name__ == "__main__":
     check()
