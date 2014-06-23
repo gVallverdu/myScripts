@@ -32,3 +32,6 @@ bands_Cu.py
 encut.job
     Bash script to compute gamma point energie as a function of the plane waves cutoff.
 
+chgsum.f90
+    Fortran program in order to sum up to CHGCAR files. This fortran program is
+    two times faster than a python script.
