@@ -15,6 +15,7 @@ scofield.py
 getCharges
     Compute atomic charges from a Bader caclculations done with the bader
     program of the University of Texas at Austin.
+    Now included in v : v charges.
 
 makeKpoins.py
     Create a KPOINTS file for a band structure calculation. This script use
@@ -33,5 +34,5 @@ encut.job
     Bash script to compute gamma point energie as a function of the plane waves cutoff.
 
 chgsum.f90
-    Fortran program in order to sum up to CHGCAR files. This fortran program is
-    two times faster than a python script.
+    Fortran program in order to sum up two CHGCAR files. This fortran program is
+    at least two times faster than a python script.

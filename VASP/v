@@ -89,6 +89,11 @@ SUB-COMMANDS
             into a file named 'DOS_X.dat' where X is the symbol of the
             element.
 
+        atdos iat ['FILENAME']
+            read projected DOS from 'vasprun.xml' or from 'FILENAME', extract
+            projected DOS on atom index iat and dump the data into a file.
+            iat goes from 1 to the number of atom.
+
         mag
             read OUTCAR and POSCAR file and print magnetization of each atom at
             the last ionic step.
@@ -98,6 +103,9 @@ SUB-COMMANDS
             `http://http://theory.cm.utexas.edu/henkelman/code/bader/`_
             Read atomic populations into ACF.dat file and compute atomic
             charges using data in POTCAR file and atom names in POSCAR file.
+
+        cvg
+            Look at convergence of the calculation
 
     Compute data
     ------------
@@ -168,8 +176,8 @@ def check():
 
     options = ["h", "help", "-h", "--help",
                "clean", "sp", "spb", "restart",
-               "cell", "cl", "chgsum", "charges",
-               "tdos", "pdos", "mag", "dep"]
+               "cell", "cl", "chgsum", "charges", "cvg",
+               "tdos", "pdos", "mag", "dep", "atdos"]
 
     opt = sys.argv[1]
     if opt not in options:
@@ -266,6 +274,28 @@ def select():
 
         plot_proj_dos(xmlfile, tofile)
 
+    elif opt == "atdos":
+        xmlfile = "vasprun.xml"
+
+        if len(sys.argv) == 3:
+            iat = sys.argv[2]
+        elif len(sys.argv) == 4:
+            iat = sys.argv[2]
+            xmlfile = sys.argv[3]
+        else:
+            _die("Error, bad arguments", 1)
+
+        try:
+            iat = int(iat)
+        except ValueError:
+            _die("iat must be an integer", 1)
+
+        if iat < 1:
+            _die("Error, iat goes from 1 to number of atoms", 1)
+
+
+        plot_at_dos(iat, xmlfile)
+
     elif opt == "mag":
         get_mag()
 
@@ -275,6 +305,9 @@ def select():
         else:
             filename = None
         charges(filename)
+
+    elif opt == "cvg":
+        showcvg()
 
     elif opt == "chgsum":
         chgsum()
@@ -383,6 +416,7 @@ def makeSP():
     for i, line in enumerate(incar):
         for tag in ["EDIFFG", "IBRION", "ISIF", "LREAL", "SIGMA"]:
             if tag in line:
+                print("delete : " + line.strip())
                 dline.append(line)
 
         if "NSW" in line:
@@ -639,6 +673,7 @@ def plot_total_dos(xmlfile="vasprun.xml", tofile=False):
 
     # read
     run = Vasprun(xmlfile, parse_eigen=False)
+    print("gap = %12.6f" % run.complete_dos.get_gap())
 
     if tofile:
         if not run.is_spin:
@@ -706,12 +741,13 @@ def plot_proj_dos(xmlfile="vasprun.xml", tofile=False):
     # read
     run = Vasprun(xmlfile, parse_eigen=False)
     dos = run.complete_dos
+    print("gap = %12.6f" % dos.get_gap())
 
     if tofile:
         el_tdos = dos.get_element_dos()
         for el, tdos in el_tdos.items():
             el_dos = dos.get_element_spd_dos(el)
-            lines = "# Element: %s\n" % el.symbol
+            lines = "# Element : %s\n" % el.symbol
             lines += "# column 1: E - E_fermi (eV)\n"
             if not run.is_spin:
                 lines += "# column 2: DOS projected on %s\n" % el.symbol
@@ -788,6 +824,93 @@ def plot_proj_dos(xmlfile="vasprun.xml", tofile=False):
         plt.xlabel(r"$E - E_{f}$   /   eV")
 
         plt.show()
+
+def plot_at_dos(iat, xmlfile="vasprun.xml"):
+    """ Print DOS projected on atom iat 
+
+        args:
+            iat (int): index of the atom from 1 to # of atom
+    
+    """
+
+    # check xml file
+    if not os.path.exists(xmlfile):
+        _die("File %s does not exist" % xmlfile, 1)
+
+    # import pymatgen
+    try:
+        from pymatgen.io.vaspio.vasp_output import Vasprun
+        from pymatgen.electronic_structure.core import Spin
+    except ImportError:
+        _die("\n ## Pymatgen may be not available ##", 1)
+
+    # read
+    run = Vasprun(xmlfile, parse_eigen=False)
+    dos = run.complete_dos
+    site = run.initial_structure[iat-1]
+    spd_dos = dos.get_site_spd_dos(site)
+    sitedos = dos.get_site_dos(site)
+    print("gap = %12.6f" % dos.get_gap())
+
+    # print file
+    lines = "# Element  : %s_%d\n" % (site.specie.symbol, iat)
+    lines += "# column  1: E - E_fermi (eV)\n"
+    nc = 1
+    if not run.is_spin:
+        # header
+        nc += 1
+        lines += "# column %2d: DOS projected on %s_%d\n" % (nc,
+            site.specie.symbol, iat)
+        for orb in ["s", "p", "d"]:
+            nc += 1
+            lines += "# column %2d: DOS projected on all %s AO\n" % (nc, orb)
+        for orb in dos.pdos[site]:
+            nc += 1
+            lines += "# column %2d: DOS projected on %s\n" % (nc, orb)
+
+        # data
+        for i in xrange(len(dos.energies)):
+            lines += "%12.7f " % (dos.energies[i] - dos.efermi)
+            lines += "%12.7f " %  sitedos.densities[Spin.up][i]
+            for orb in ["S", "P", "D"]:
+                lines += "%12.7f" % spd_dos[orb].densities[Spin.up][i]
+            for pdos in dos.pdos[site].values():
+                lines += "%12.7f" % pdos[Spin.up][i]
+            lines += "\n"
+
+    else:
+        # header
+        nc += 1
+        lines += "# column %2d: DOS up projected on %s_%d\n" % (nc,
+            site.specie.symbol, iat)
+        nc += 1
+        lines += "# column %2d: DOS down projected on %s_%d\n" % (nc,
+            site.specie.symbol, iat)
+        for orb in ["s", "p", "d"]:
+            nc += 1
+            lines += "# column %2d: DOS up projected on all %s AO\n" % (nc, orb)
+            nc += 1
+            lines += "# column %2d: DOS down projected on all %s AO\n" % (nc, orb)
+        for orb in dos.pdos[site]:
+            nc += 1
+            lines += "# column %2d: DOS up projected on %s\n" % (nc, orb)
+            nc += 1
+            lines += "# column %2d: DOS down projected on %s\n" % (nc, orb)
+
+        # data
+        for i in xrange(len(dos.energies)):
+            lines += "%12.7f " % (dos.energies[i] - dos.efermi)
+            lines += "%12.7f " %  sitedos.densities[Spin.up][i]
+            lines += "%12.7f " %  sitedos.densities[Spin.down][i]
+            for orb in ["S", "P", "D"]:
+                lines += "%12.7f" % spd_dos[orb].densities[Spin.up][i]
+                lines += "%12.7f" % spd_dos[orb].densities[Spin.down][i]
+            for pdos in dos.pdos[site].values():
+                lines += "%12.7f" % pdos[Spin.up][i]
+                lines += "%12.7f" % pdos[Spin.down][i]
+            lines += "\n"
+
+    open("DOS_%s%d.dat" % (site.specie.symbol, iat), "w").write(lines)
 
 def get_mag():
     """ Read OUTCAR and POSCAR file and print magnetization """
@@ -941,6 +1064,127 @@ def charges(filename=None):
         print(lines)
     else:
         open(filename, "w").write(lines)
+
+def showcvg(xmlfile="vasprun.xml"):
+    """ Output graphs for looking at convergence of the calculation """
+
+    import numpy as np
+    
+    # load pymatgen
+    try:
+        from pymatgen.io.vaspio.vasp_output import Oszicar
+    except ImportError:
+        _die("\n ## Pymatgen may be not available ##", 1)
+
+    # load matplotlib
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        _die("\n ## Matplotlib may be not available ##", 1)
+
+    # check files
+    for f in ["OSZICAR", "OUTCAR"]:
+        if not os.path.exists(f):
+            _die("File %s does not exist" % f, 1)
+
+    # read data
+    osz = Oszicar("OSZICAR")
+    nionic_steps = len(osz.ionic_steps)
+
+    print(" * N ionic steps: %d" % nionic_steps)
+
+    if nionic_steps == 1:
+        # electronic convergence only
+        energy = [it["E"] for it in osz.electronic_steps[0]]
+
+        font = {'family': 'serif', 'size': 18}
+        plt.rc('font', **font)
+        plt.figure(figsize=(11.69, 8.27)) # A4
+        plt.plot(energy)
+        plt.title("SCF convergence")
+        plt.xlabel("Electronic step")
+        plt.ylabel("Energie   /   eV")
+
+    else:
+        # ionic convergence
+
+        # ionic step energies
+        e_fr_energy = [it["F"] for it in osz.ionic_steps]
+
+        # read forces
+        out = open("OUTCAR", "r")
+
+        fmax = list()
+        fave = list()
+        fstd = list()
+
+        line = out.readline()
+        while line != "":
+            line = out.readline()
+            if "NIONS" in line:
+                nions = int(line.split("NIONS =")[1])
+                print(" * N ions       : %d" % nions)
+
+            if "EDIFFG" in line:
+                ediffg = float(line.split()[2])
+                print(" * EDIFFG       : %f" % ediffg)
+
+            if "TOTAL-FORCE" in line:
+                out.readline()
+                forces = np.array([[float(fx) 
+                    for fx in out.readline().split()[4:7]] 
+                        for iat in xrange(nions)])
+                forces = np.sqrt((forces**2).sum(axis=1))
+                fmax.append(forces.max())
+                fave.append(forces.mean())
+                fstd.append(forces.std())
+
+        delta_F = list()
+        for i in range(nionic_steps-1):
+            delta_F.append(fabs(e_fr_energy[i+1] - e_fr_energy[i]))
+
+        font = {'family': 'serif', 'size': 14}
+        plt.rc('font', **font)
+        fig = plt.figure(figsize=(11.69, 8.27)) # A4
+        fig.subplots_adjust(wspace=0.25)
+        fig.suptitle("VASP convergence")
+
+        # graph1 = total energy
+        graph1 = fig.add_subplot(2, 2, 1)
+        graph1.set_ylabel("Energy   /   eV")
+        graph1.set_xlabel("ionic step")
+        graph1.grid()
+        graph1.plot(e_fr_energy, "r")
+        graph1.set_xlim(0, nionic_steps + 1)
+
+        # graph2 = Free energy variation
+        graph2 = fig.add_subplot(2, 2, 3, sharex=graph1)
+        graph2.set_ylabel("$\Delta F$   /   eV")
+        graph2.set_xlabel("ionic step")
+        graph2.grid()
+        graph2.plot(delta_F)
+        if ediffg > 0. :
+            graph2.hlines(ediffg, 0, nionic_steps+1, color="k",
+                linestyle="--")
+        graph2.set_xlim(0, nionic_steps + 1)
+
+        # graph3 = forces acting on ions
+        graph3 = fig.add_subplot(1, 2, 2, sharex=graph1)
+        graph3.set_ylabel("forces   /   eV/$\AA$")
+        graph3.set_xlabel("ionic step")
+        graph3.grid()
+        graph3.plot(fmax, label="fmax")
+        graph3.plot(fave, label="<f>")
+        graph3.plot(fstd, label="$\sigma_f$")
+        graph3.legend(fancybox=True, shadow=True)
+        if ediffg < 0.:
+            graph3.hlines(-ediffg, 0, nionic_steps+1, color="k",
+                linestyle="--")
+        graph3.set_xlim(0, nionic_steps + 1)
+
+    # plot data
+    plt.show()
+        
 
 # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
 # compute things
