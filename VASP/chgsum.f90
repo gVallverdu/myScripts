@@ -74,7 +74,7 @@ program chgsum
     rho1(:,:,:) = rho1(:,:,:) + scale_factor * rho2(:,:,:)
 
     ! write sum file
-    write(*, "('Writting file 2 : ', a)") "CHGCAR_sum"
+    write(*, "('Writting file   : ', a)") "CHGCAR_sum"
     open(unit=10, file="CHGCAR_sum", action="write")
     do i = 1, nline
         write(10, "(a)") trim(header(i))
