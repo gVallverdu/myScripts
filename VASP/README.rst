@@ -36,3 +36,9 @@ encut.job
 chgsum.f90
     Fortran program in order to sum up two CHGCAR files. This fortran program is
     at least two times faster than a python script.
+
+chgsplit.f90
+    Fortran program in order to split a CHGCAR file into a first CHGCAR file
+    containing only the spin up density and one other containing only spin down
+    density.
+

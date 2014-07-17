@@ -98,11 +98,13 @@ SUB-COMMANDS
             read OUTCAR and POSCAR file and print magnetization of each atom at
             the last ionic step.
 
-        charges
+        charges [FILENAME]
             After a bader calculation
             `http://http://theory.cm.utexas.edu/henkelman/code/bader/`_
             Read atomic populations into ACF.dat file and compute atomic
             charges using data in POTCAR file and atom names in POSCAR file.
+            If [FILENAME] is given, charges are printed into a file of name
+            [FILENAME].
 
         cvg
             Look at convergence of the calculation
