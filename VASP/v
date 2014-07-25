@@ -1300,9 +1300,6 @@ def get_deplacement(xmlfile="vasprun.xml", fs1=None, fs2=None):
         if len(struct1.sites) != len(struct2.sites):
             _die("ERROR, structures are unconsistant", 1)
 
-    else:
-        _die("ERROR, you must give two structures or an xml file", 1)
-
     print("Structure 1 : " + struct1.composition.reduced_formula)
     print("abc      : %10.4f %10.4f %10.4f" % struct1.lattice.abc)
     print("angles   : %10.4f %10.4f %10.4f" % struct1.lattice.angles)
