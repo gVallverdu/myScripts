@@ -121,6 +121,10 @@ SUB-COMMANDS
             the vasprun.xml file is read and initial and final structures are
             compared. Two POSCAR/CONTCAR file can be also given in arguements.
 
+        supercell NX NY NZ
+            Build a supercell with the dimension NX*a x NY*b x NZ*c and ouput
+            it in a POSCAR file.
+
 REMARK
         Job files are supposed to begin by 'j' or to have  a '.job' extension.
 
@@ -179,7 +183,8 @@ def check():
     options = ["h", "help", "-h", "--help",
                "clean", "sp", "spb", "restart",
                "cell", "cl", "chgsum", "charges", "cvg",
-               "tdos", "pdos", "mag", "dep", "atdos"]
+               "tdos", "pdos", "mag", "dep", "atdos",
+               "supercell"]
 
     opt = sys.argv[1]
     if opt not in options:
@@ -325,6 +330,19 @@ def select():
             fs2 = sys.argv[3]
 
         get_deplacement(xmlfile, fs1, fs2)
+
+    elif opt == "supercell":
+        if len(sys.argv) == 5:
+            try:
+                nx = int(sys.argv[2])
+                ny = int(sys.argv[3])
+                nz = int(sys.argv[4])
+            except ValueError:
+                _die("nx, ny, nz must be integer", 1)
+        else:
+            _die("Incorrect number of arguments", 1)
+
+        make_supercell(nx, ny, nz)
 
     else:
         _die("This option is still not implemented")
@@ -1261,11 +1279,17 @@ def get_deplacement(xmlfile="vasprun.xml", fs1=None, fs2=None):
         if not os.path.exists(xmlfile):
             _die("ERROR, file %s does not exist" % xmlfile, 1)
 
-        run = Vasprun(xmlfile)
-        struct1 = run.initial_structure
-        struct2 = run.final_structure
+        try:
+            run = Vasprun(xmlfile)
+            struct1 = run.initial_structure
+            struct2 = run.final_structure
+        except:
+            fs1 = "POSCAR"
+            fs2 = "CONTCAR"
+            print("\n# BAD RUN TERMINATION #, I try to read POSCAR and CONTCAR\n")
+            xmlfile = None
 
-    elif fs1 and fs2:
+    if fs1 and fs2:
         if not os.path.exists(fs1):
             _die("ERROR, file %s does not exist" % fs1, 1)
         if not os.path.exists(fs2):
@@ -1309,6 +1333,45 @@ def get_deplacement(xmlfile="vasprun.xml", fs1=None, fs2=None):
             ligne += "(%2d,%2d,%2d)" % j.tuple
 
         print(ligne)
+
+def make_supercell(nx=1, ny=1, nz=1):
+    """
+    Read a structure from CONTCAR or POSCAR file and build a supercell
+    whith the dimension nx*a x ny*b x nz.
+
+    Arguments:
+        nx (int): number of duplicate along a
+        ny (int): number of duplicate along b
+        nz (int): number of duplicate along c
+
+    Return:
+        Print structure into a POSCAR file
+    """
+
+    try:
+        import pymatgen as mg
+        from pymatgen.io.vaspio.vasp_input import Poscar
+    except ImportError:
+        _die("\n ## Pymatgen may be not available ##", 1)
+
+    # file to read
+    if os.path.exists("CONTCAR"):
+        filename = "CONTCAR"
+    elif os.path.exists("POSCAR"):
+        filename = "POSCAR"
+    else:
+        filename = raw_input("Structure file name: ")
+
+    # build supercell
+    print("read file : " + filename)
+    s = mg.read_structure(filename)
+    s.make_supercell([nx, ny, nz])
+    p = Poscar(s)
+    outfile = "POSCAR_%dx%dx%d.vasp" % (nx, ny, nz)
+    print("write file: " + outfile)
+    p.write_file(outfile)
+
+    return s
 
 if __name__ == "__main__":
     check()
