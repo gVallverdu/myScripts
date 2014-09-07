@@ -109,6 +109,10 @@ SUB-COMMANDS
         cvg
             Look at convergence of the calculation
 
+        forces ['FILENAME']
+            Read forces acting on eahc ion in file 'FILENAME' and print them.
+            Default is file 'OUTCAR', 'FILENAME' must be an OUTCAR file.
+
     Compute data
     ------------
 
@@ -184,7 +188,7 @@ def check():
                "clean", "sp", "spb", "restart",
                "cell", "cl", "chgsum", "charges", "cvg",
                "tdos", "pdos", "mag", "dep", "atdos",
-               "supercell"]
+               "forces", "supercell"]
 
     opt = sys.argv[1]
     if opt not in options:
@@ -315,6 +319,15 @@ def select():
 
     elif opt == "cvg":
         showcvg()
+
+    elif opt == "forces":
+        outfile = "OUTCAR"
+        if len(sys.argv) == 3:
+            outfile = sys.argv[2]
+            if not os.path.exists(outfile):
+                _die("Error, file %s does not exist" % outfile, 1)
+
+        get_forces(outfile)
 
     elif opt == "chgsum":
         chgsum()
@@ -1204,7 +1217,40 @@ def showcvg(xmlfile="vasprun.xml"):
 
     # plot data
     plt.show()
-        
+
+def get_forces(outfile):
+    """ Read and print forces acting on each ion """
+
+    import numpy as np
+    try:
+        import pymatgen as mg
+    except ImportError:
+        _die("\n ## Pymatgen may be not available ##", 1)
+
+    # read number of ions
+    if os.path.exists("POSCAR"):
+        struct = mg.read_structure("POSCAR")
+        nat = len(struct)
+        at = [el.symbol for el in struct.species]
+    else:
+        _die("\nError, I need a POSCAR file", 1)
+
+    out = open(outfile, "r")
+    line = out.readline()
+    while line != "":
+        line = out.readline()
+
+        if "TOTAL-FORCE" in line:
+            forces = list()
+            out.readline()
+            for iat in xrange(nat):
+                line = out.readline()
+                fxyz = np.array([float(fx) for fx in line.split()[3:6]])
+                f = np.sqrt((fxyz**2).sum())
+                forces.append(fxyz.tolist() + [f])
+
+    for iat in xrange(nat):
+        print(("%4d %3s" + 4*"%12.6f") % tuple([iat+1, at[iat]] + forces[iat]))
 
 # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
 # compute things
