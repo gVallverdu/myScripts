@@ -1224,6 +1224,7 @@ def get_forces(outfile):
     import numpy as np
     try:
         import pymatgen as mg
+        from pymatgen.io.vaspio.vasp_input import Incar
     except ImportError:
         _die("\n ## Pymatgen may be not available ##", 1)
 
@@ -1232,9 +1233,30 @@ def get_forces(outfile):
         struct = mg.read_structure("POSCAR")
         nat = len(struct)
         at = [el.symbol for el in struct.species]
+
+        # selective dynamics case
+        poscar = open("POSCAR", "r").readlines()
+        if poscar[7][0].lower() == "s":
+            freeze = list()
+            for iat in xrange(nat):
+                line = [el.upper() for el in poscar[9 + iat].split()[3:]]
+                if "F" in line:
+                    freeze.append([True] + line)
+                else:
+                    freeze.append([False] + line)
+        else:
+            freeze = [[False, " ", " ", " "] for iat in xrange(nat)]
+
     else:
         _die("\nError, I need a POSCAR file", 1)
 
+    # read EDIFFG
+    if os.path.exists("INCAR"):
+        ediffg = Incar.from_file("INCAR")["EDIFFG"]
+    else:
+        _die("\nError, I need an INCAR file", 1)
+
+    # read forces on OUTCAR
     out = open(outfile, "r")
     line = out.readline()
     while line != "":
@@ -1249,8 +1271,29 @@ def get_forces(outfile):
                 f = np.sqrt((fxyz**2).sum())
                 forces.append(fxyz.tolist() + [f])
 
+    # output 
+    print(72 * "-")
+    print("                      TOTAL FORCES ON ATOMS ")
+    print(72 * "-")
+    print(" iat at   freeze     fx        fy        fz          f            cvg")
+    print(72 * "-")
     for iat in xrange(nat):
-        print(("%4d %3s" + 4*"%12.6f") % tuple([iat+1, at[iat]] + forces[iat]))
+        fmt = "%4d %3s  " + 3*"%2s" + 3*"%10.4f" + " %10.3f"
+        if freeze[iat][0]:
+            print((fmt + "  freeze") % \
+                tuple([iat+1, at[iat]] + freeze[iat][1:] + forces[iat]))
+        else:
+            if ediffg < 0:
+                if forces[iat][-1] < -ediffg:
+                    print((fmt + "         cvg") % \
+                       tuple([iat+1, at[iat]] + freeze[iat][1:] + forces[iat]))
+                else:
+                    print(fmt % \
+                       tuple([iat+1, at[iat]] + freeze[iat][1:] + forces[iat])) 
+            else:
+                print(fmt % \
+                    tuple([iat+1, at[iat]] + freeze[iat][1:] + forces[iat]))
+    print(72 * "-")
 
 # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
 # compute things
