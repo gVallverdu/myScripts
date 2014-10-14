@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding=utf-8 -*-
 
-from __future__ import division, print_function
-
 """
 Manage VASP job operation and extract interesting data.
 
@@ -142,6 +140,8 @@ REMARK
         Some functions may need pymatgen module (see http://www.pymatgen.org).
         
 """
+
+from __future__ import division, print_function
 
 import sys
 import os
