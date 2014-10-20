@@ -869,9 +869,9 @@ def plot_proj_dos(xmlfile="vasprun.xml", tofile=False):
                 for i in xrange(len(dos.energies)):
                     lines += "%12.7f " % (dos.energies[i] - dos.efermi)
                     lines += "%12.7f " %  tdos.densities[Spin.up][i]
-                    lines += "%12.7f " %  el_dos["S"][Spin.up][i]
-                    lines += "%12.7f " %  el_dos["P"][Spin.up][i]
-                    lines += "%12.7f " %  el_dos["D"][Spin.up][i]
+                    lines += "%12.7f " %  el_dos["S"].densities[Spin.up][i]
+                    lines += "%12.7f " %  el_dos["P"].densities[Spin.up][i]
+                    lines += "%12.7f " %  el_dos["D"].densities[Spin.up][i]
                     lines += "\n"
 
             else:
@@ -887,12 +887,12 @@ def plot_proj_dos(xmlfile="vasprun.xml", tofile=False):
                     lines += "%12.7f " % (dos.energies[i] - dos.efermi)
                     lines += "%12.7f " %  tdos.densities[Spin.up][i]
                     lines += "%12.7f " % -tdos.densities[Spin.down][i]
-                    lines += "%12.7f " %  el_dos["S"][Spin.up][i]
-                    lines += "%12.7f " % -el_dos["S"][Spin.down][i]
-                    lines += "%12.7f " %  el_dos["P"][Spin.up][i]
-                    lines += "%12.7f " % -el_dos["P"][Spin.down][i]
-                    lines += "%12.7f " %  el_dos["D"][Spin.up][i]
-                    lines += "%12.7f " % -el_dos["D"][Spin.down][i]
+                    lines += "%12.7f " %  el_dos["S"].densities[Spin.up][i]
+                    lines += "%12.7f " % -el_dos["S"].densities[Spin.down][i]
+                    lines += "%12.7f " %  el_dos["P"].densities[Spin.up][i]
+                    lines += "%12.7f " % -el_dos["P"].densities[Spin.down][i]
+                    lines += "%12.7f " %  el_dos["D"].densities[Spin.up][i]
+                    lines += "%12.7f " % -el_dos["D"].densities[Spin.down][i]
                     lines += "\n"
 
             open("DOS_%s.dat" % el.symbol, "w").write(lines)
@@ -911,14 +911,14 @@ def plot_proj_dos(xmlfile="vasprun.xml", tofile=False):
             plt.plot(dos.energies - dos.efermi, dos.densities[Spin.up], "k-", 
                 label="total")
             for orb, pdos in el_dos.items():
-                plt.plot(dos.energies - dos.efermi, pdos[Spin.up], colors[orb],
+                plt.plot(dos.energies - dos.efermi, pdos.densities[Spin.up], colors[orb],
                     label=orb.lower())
 
             if run.is_spin:
                 plt.plot(dos.energies - dos.efermi, -dos.densities[Spin.down],
                     "k-")
                 for orb, pdos in el_dos.items():
-                    plt.plot(dos.energies - dos.efermi, -pdos[Spin.down],
+                    plt.plot(dos.energies - dos.efermi, -pdos.densities[Spin.down],
                         colors[orb])
                 xmin, xmax = plt.xlim()
                 plt.hlines(0, xmin, xmax, color="k")
