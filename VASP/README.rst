@@ -8,9 +8,12 @@ v
     methods need pymatgen (`http://pymatgen.org`_) to be used. Execute v -h to see the 
     complete documentation.
 
-scofield.py
+moduleDOS.py
     Python module in order to interpret valence band using DOS and cross
     section from Scofield paper.
+
+scofield.py
+    Python script presenting an example of moduleDOS.py usage.
 
 getCharges
     Compute atomic charges from a Bader caclculations done with the bader
