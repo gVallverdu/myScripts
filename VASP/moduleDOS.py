@@ -280,7 +280,7 @@ class CrossSec(object):
 
     all_data = (Li_p_Mg, Li_p_Al, N_Mg, N_Al, O_Mg, O_Al,
                 Na_p_Mg, Na_p_Al, P_Mg, P_Al, S_Mg, S_Al,
-                Fe_Mg, Fe_Al, Cu_Mg, Cu_Al)
+                Mn_Mg, Mn_Al, Fe_Mg, Fe_Al, Cu_Mg, Cu_Al)
 
     @staticmethod
     def from_string(specie, ener=Kalpha.Al):
