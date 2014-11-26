@@ -134,6 +134,15 @@ SUB-COMMANDS
             Build a supercell with the dimension NX*a x NY*b x NZ*c and ouput
             it in a POSCAR file.
 
+        neighbors [iat] [radius] [FILE]
+            Print the neighbor list of atom [iat] in a sphere of radius
+            [radius]. The structure is read on [FILE]. The radius is in
+            angstrom.
+
+        allneighbors [radius] [FILE]
+            Print all neighbors of all atoms in a sphere of radius [radius].
+            The structure is read on [FILE]. The radius is in angstrom.
+
 REMARK
         Job files are supposed to begin by 'j' or to have  a '.job' extension.
 
@@ -195,7 +204,7 @@ def check():
                "clean", "sp", "spb", "restart", "purge",
                "cell", "cl", "chgsum", "charges", "cvg",
                "tdos", "pdos", "mag", "dep", "atdos",
-               "forces", "supercell"]
+               "forces", "supercell", "neighbors", "allneighbors"]
 
     if len(sys.argv) < 2:
         print("available sub-command:")
@@ -323,7 +332,6 @@ def select():
         if iat < 1:
             _die("Error, iat goes from 1 to number of atoms", 1)
 
-
         plot_at_dos(iat, xmlfile)
 
     elif opt == "mag":
@@ -370,11 +378,50 @@ def select():
                 ny = int(sys.argv[3])
                 nz = int(sys.argv[4])
             except ValueError:
-                _die("nx, ny, nz must be integer", 1)
+                _die("nx, ny, nz must be an integer", 1)
         else:
             _die("Incorrect number of arguments", 1)
 
         make_supercell(nx, ny, nz)
+
+    elif opt == "neighbors":
+        struct = "POSCAR"
+        radius = 3.
+
+        try:
+            iat = int(sys.argv[2])
+        except ValueError:
+            _die("iat must be an integer", 1)
+        except IndexError:
+            _die("Incorrect number of arguments", 1)
+
+        try:
+            radius = float(sys.argv[3])
+        except ValueError:
+            _die("radius must be a floating number", 1)
+        except IndexError:
+            _die("Incorrect number of arguments", 1)
+
+        if len(sys.argv) == 5:
+            struct = sys.argv[4]
+
+        neighbors(iat, radius, struct)
+
+    elif opt == "allneighbors":
+        struct = "POSCAR"
+        radius = 3.
+
+        try:
+            radius = float(sys.argv[2])
+        except ValueError:
+            _die("radius must be a floating number", 1)
+        except IndexError:
+            _die("Incorrect number of arguments", 1)
+
+        if len(sys.argv) == 4:
+            struct = sys.argv[3]
+
+        all_neighbors(radius, struct)
 
     else:
         _die("This option is still not implemented")
@@ -1537,6 +1584,72 @@ def make_supercell(nx=1, ny=1, nz=1):
     p.write_file(outfile)
 
     return s
+
+def neighbors(iat, radius=3.0, struct="POSCAR"):
+    """
+    Print the neighbor list of atom number iat.
+    """
+    try:
+        import pymatgen as mg
+    except ImportError:
+        _die("\n ## Pymatgen may be not available ##", 1)
+
+    print("read file ----> %s\n" % struct)
+
+    s = mg.Structure.from_file(struct)
+    nlist = s.get_neighbors(s[iat], radius) #.sort(key = lambda x: x[1])
+
+    # sort by neighbor distance
+    nlist.sort(key = lambda x: x[1])
+
+    print("Neighbors of atom %s_%d" % (s[iat].specie.symbol, iat + 1))
+    for n in nlist:
+        site, d = n
+        print("    %3s: %8.3f" % (site.specie.symbol, d))
+
+def all_neighbors(radius=3., struct="POSCAR"):
+    """
+    Print neighbors of all atoms in the cell.
+    """
+    try:
+        import pymatgen as mg
+    except ImportError:
+        _die("\n ## Pymatgen may be not available ##", 1)
+
+
+    # threshold for same neighbors
+    th = 0.001
+
+    # get all neighbors
+    s = mg.Structure.from_file(struct)
+    allneig = s.get_all_neighbors(radius)
+
+    iat = 0
+    for site, neiglist in zip(s, allneig):
+        iat += 1
+        print("\nNeighbors of atom %s_%d" % (site.specie.symbol, iat))
+        neiglist.sort(key = lambda x: x[1])
+        uneq =list()
+        for neig in neiglist:
+            site, d = neig
+            if len(uneq) == 0:
+                uneq.append((site, d, 1))
+            else:
+                new = True
+                for i, u in enumerate(uneq):
+                    usite, ud, n = u
+                    if usite.specie.symbol == site.specie.symbol and \
+                        fabs(d - ud) < th:
+                        new = False
+                        n += 1
+                        uneq[i] = (usite, ud, n)
+                        break
+                if new:
+                    uneq.append((site, d, 1))
+
+        for neig in uneq:
+            site, d, n = neig
+            print("    %3s (%2d): %10.4f" % (site.specie.symbol, n, d))
 
 if __name__ == "__main__":
     check()
