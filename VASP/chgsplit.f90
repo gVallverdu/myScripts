@@ -13,7 +13,7 @@ program chgsplit
     character(len=100)                            :: chgcar
 
     ! local:
-    integer                                       :: i, j, k, nline, nval
+    integer                                       :: i, j, k, nline, nval, io
     integer                                       :: ngxf1, ngyf1, ngzf1
     integer                                       :: ngxf2, ngyf2, ngzf2
     character(len=100)                            :: line, bid
@@ -51,19 +51,28 @@ program chgsplit
     read(10, *) (((rho1(i, j, k), i = 1, ngxf1), j = 1, ngyf1), k = 1, ngzf1)
 
     ! skip augementation occupancies part
-    read(10, "(a)") line
-    do while (index(line, "occupancies") /= 0)
-        read(line, *) bid, bid, bid, nval
-        read(10, *) (occ, i = 1, nval)
-        read(10, "(a)") line
+    io = 1
+    do while (io /= 0)
+        read(10, "(3i5)", iostat=io) ngxf2, ngyf2, ngzf2
     end do
 
-    write(*,*) line
-    ! read up-down density
-    read(10, *) ngxf2, ngyf2, ngzf2
+!    do while (index(line, "occupancies") /= 0)
+!        read(line, *) bid, bid, bid, nval
+!        read(10, *) (occ, i = 1, nval)
+!        read(10, "(a)") line
+!    end do
+
+!    write(*,*) line
+!    read(10, *) ngxf2, ngyf2, ngzf2
+
+    ! check array size
     if( ngxf1 /= ngxf2 .or. ngyf1 /= ngyf2 .or. ngzf1 /= ngzf2) then
+        write(* ,"('1: NGXF = ', i5, ', NGYF = ',i5,', NGZF = ',i5)") ngxf1, ngyf1, ngzf1
+        write(* ,"('2: NGXF = ', i5, ', NGYF = ',i5,', NGZF = ',i5)") ngxf2, ngyf2, ngzf2
         stop "unconsistant grid"
     end if
+
+    ! read up-down density
     allocate(rho2(ngxf2, ngyf2, ngzf2))
     read(10, *) (((rho2(i, j, k), i = 1, ngxf1), j = 1, ngyf1), k = 1, ngzf1)
     close(10)
