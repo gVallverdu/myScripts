@@ -85,8 +85,8 @@ program chgsplit
     deallocate(rho1, rho2)
 
     ! write up density
-    write(*, "('Writting file   : ', a)") "CHGCAR_up"
-    open(unit=10, file="CHGCAR_up", action="write")
+    write(*, "('Writting file   : ', a)") "CHGCAR_up.vasp"
+    open(unit=10, file="CHGCAR_up.vasp", action="write")
     do i = 1, nline
         write(10, "(a)") trim(header(i))
     end do
@@ -96,8 +96,8 @@ program chgsplit
     close(10)
 
     ! write down density
-    write(*, "('Writting file   : ', a)") "CHGCAR_down"
-    open(unit=10, file="CHGCAR_down", action="write")
+    write(*, "('Writting file   : ', a)") "CHGCAR_down.vasp"
+    open(unit=10, file="CHGCAR_down.vasp", action="write")
     do i = 1, nline
         write(10, "(a)") trim(header(i))
     end do
