@@ -1365,7 +1365,7 @@ def get_forces(outfile):
         if poscar[7][0].lower() == "s":
             freeze = list()
             for iat in xrange(nat):
-                line = [el.upper() for el in poscar[9 + iat].split()[3:]]
+                line = [el.upper() for el in poscar[9 + iat].split()[3:6]]
                 if "F" in line:
                     freeze.append([True] + line)
                 else:
