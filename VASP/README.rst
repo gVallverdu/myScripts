@@ -33,6 +33,10 @@ bands_Cu.py
     Build a band diagram with s, p, d contribution mapped on a RGB color scale.
     This script use pymatgen.
 
+vacantPosition.py
+    Load a structure and look for vacant positions using a grid. For each point
+    of the grid the neighbors list is built in order to accept the position.
+
 encut.job
     Bash script to compute gamma point energie as a function of the plane waves cutoff.
 
