@@ -20,7 +20,15 @@ def look4VacantPosition():
     radius = 2.5
     # threshold to exclude vacant position
     els = s.composition.elements
-    th = {els[0]: 1.8, els[1]: 2., els[2]: 2.}
+    th = {els[0]: 1.7, els[1]: 2., els[2]: 2.}
+
+    # grid ranges
+    xmin = 0
+    xmax = 1
+    ymin = 0
+    ymax = 1
+    zmin = 0
+    zmax = 1
 
     print("Parameters\n" + 10 * "-")
     print("Grid step          : %6.2f" % step)
@@ -30,20 +38,27 @@ def look4VacantPosition():
         print("X - %2s : %8.3f" % (el.symbol, dmax))
 
     vaclist = list()
-    for xi in np.arange(0, 1, step):
-        for yi in np.arange(0, 1, step):
-            for zi in np.arange(0, 1, step):
+    for xi in np.arange(xmin, xmax, step):
+        for yi in np.arange(ymin, ymax, step):
+            for zi in np.arange(zmin, zmax, step):
                 vacsite = mg.PeriodicSite("X", [xi, yi, zi], s.lattice)
                 neigh = s.get_neighbors(vacsite, radius)
 
                 grid.append("X", [xi, yi, zi])
 
                 add = True
+                nLi = 0
                 for neighsite, d in neigh:
-                    for el, dmax in th.items():
-                        if d < dmax:
-                            add = False
-                            break
+                    dmax = th[neighsite.specie]
+                    if d < dmax:
+                        add = False
+                        break
+                    if neighsite.specie.symbol == "Li":
+                        nLi += 1
+
+                if nLi >= 2:
+                    print("nLi >= 2")
+                    add = False
 
                 if add:
                     fill_s.append(vacsite.specie, vacsite.frac_coords)
