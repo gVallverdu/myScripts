@@ -49,3 +49,5 @@ chgsplit.f90
     containing only the spin up density and one other containing only spin down
     density.
 
+makeCL.py
+    Python script in order to setup a series of corelevel calculations.
