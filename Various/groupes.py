@@ -23,6 +23,7 @@ Tous les groupes ne sont pas disponnibles. Groupes disponnibles :
     * C4v
     * D3h
     * D4h
+    * D2h
 
 Exemple d'utilisation
 ---------------------
@@ -308,6 +309,35 @@ d4h.RI["Eu"]  = [ 2,  0, -2,  0,  0, -2,  0,  2,  0,  0]
 
 d4h.ordreRI = ["A1g", "A2g", "B1g", "B2g", "Eg", "A1u", "A2u", "B1u", "B2u", "Eu"]
 
+# ----------------------------------------------------------------------------- 
+#
+# Groupe D4h
+#
+# ----------------------------------------------------------------------------- 
+d2h = Groupe(name = "D2h", ordre = 8)
+
+d2h.classes["E"]        = 1
+d2h.classes["C2(z)"]    = 1
+d2h.classes["C2(y)"]    = 1
+d2h.classes["C2(x)"]    = 1
+d2h.classes["i"]        = 1
+d2h.classes["sigma_xy"] = 1
+d2h.classes["sigma_xz"] = 1
+d2h.classes["sigma_yz"] = 1
+d2h.ordreClasses = ["E", "C2(z)", "C2(y)", "C2(x)", "i", "sigma_xy", "sigma_xz", "sigma_yz"]
+d2h.Op = ["E", "C2(z)", "C2(y)", "C2(x)", "i", "sigma_xy", "sigma_xz", "sigma_yz"]
+
+d2h.RI["Ag"]  = [ 1,  1,  1,  1,  1,  1,  1,  1]
+d2h.RI["B1g"] = [ 1,  1, -1, -1,  1,  1, -1, -1]
+d2h.RI["B2g"] = [ 1, -1,  1, -1,  1, -1,  1, -1]
+d2h.RI["B3g"] = [ 1, -1, -1,  1,  1, -1, -1,  1]
+d2h.RI["Au"]  = [ 1,  1,  1,  1, -1, -1, -1, -1]
+d2h.RI["B1u"] = [ 1,  1, -1, -1, -1, -1,  1,  1]
+d2h.RI["B2u"] = [ 1, -1,  1, -1, -1,  1, -1,  1]
+d2h.RI["B3u"] = [ 1, -1, -1,  1, -1,  1,  1, -1]
+
+d2h.ordreRI = ["Ag", "B1g", "B2g", "B3g", "Au", "B1u", "B2u", "B3u"]
+
 if __name__ == "__main__":
     """ Test des donnees saisies """
 
@@ -318,4 +348,5 @@ if __name__ == "__main__":
     print("    {0} : {1}".format("C4v", c4v.testGroupe()))
     print("    {0} : {1}".format("D3h", d3h.testGroupe()))
     print("    {0} : {1}".format("D4h", d4h.testGroupe()))
+    print("    {0} : {1}".format("D2h", d2h.testGroupe()))
 
