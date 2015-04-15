@@ -1,5 +1,7 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # -*- coding=utf-8 -*-
+
+from __future__ import print_function, division
 
 """
 script anaStruct
@@ -11,84 +13,62 @@ L'objectif de ce script est de calculer tous les angles et toutes les liaisons
 """
 
 import os
-import numpy as np
 import sys
-from crystal import Crystal
+import numpy as np
+from scipy.stats import norm
+import pymatgen as mg
+import matplotlib.pyplot as plt
 
-# 27 cubes
-trans = np.array([[0. , 0., 0.],
-                  [ 1., 0., 0.],
-                  [ 1., 1., 0.],
-                  [ 1.,-1., 0.],
-                  [ 1., 0., 1.],
-                  [ 1., 0.,-1.],
-                  [ 1., 1., 1.],
-                  [ 1.,-1., 1.],
-                  [ 1., 1.,-1.],
-                  [ 1.,-1.,-1.],
-                  [-1., 0., 0.],
-                  [-1., 1., 0.],
-                  [-1.,-1., 0.],
-                  [-1., 0., 1.],
-                  [-1., 0.,-1.],
-                  [-1., 1., 1.],
-                  [-1.,-1., 1.],
-                  [-1., 1.,-1.], 
-                  [-1.,-1.,-1.],
-                  [ 0., 1., 0.],
-                  [ 0.,-1., 0.],
-                  [ 0., 0., 1.],
-                  [ 0., 0.,-1.],
-                  [ 0., 1., 1.],
-                  [ 0.,-1., 1.],
-                  [ 0., 1.,-1.],
-                  [ 0.,-1.,-1.]])
-
-def g(x, x0, sigma):
-    """ return a gaussian function """
-    return 1. / (sigma * np.sqrt(2. * np.pi)) * np.exp(-(x - x0)**2 / (2. * sigma**2))
-
-# vectorize gaussian function
-#vgauss = sp.vectorize(g, excluded = ["x0", "sigma"])
-
-def anaStruct():
+def anaStruct(poscar, calcDistance=True, calcAngle=True, plot=True):
     """ main program """
-
-    calcDistance = True
-    calcAngle    = True
-
-    # poscar name
-    if len(sys.argv) == 2:
-        poscar = sys.argv[1]
-    else:
-        poscar = "CONTCAR"
 
     # load data
     if not os.path.exists(poscar):
-        print("file {0} does not exist".format(poscar))
+        print("file %s does not exist" % poscar)
         exit(1)
     else:
-        print("Read file " + poscar)
-        struct = Crystal.fromPOSCAR(poscar, verbose = False)
+        print("Read file ", poscar)
+        struct = mg.Structure.from_file(poscar)
 
     # distance analysis
-    sigma     = .01
-    npts      = 300
-    xmin      = 1.5
-    xmax      = 2.5
+    sigma = .01
+    npts  = 300
+    xmin  = 1.5
+    xmax  = 2.5
     if calcDistance:
-        getDistances(struct, sigma, npts, xmin, xmax)
+        x, data = getDistances(struct, sigma, npts, xmin, xmax)
+
+        if plot:
+            for bond, h in data.items():
+                plt.plot(x, h, label=bond)
+            plt.xlabel(r"distance   /   $\AA$")
+            plt.ylabel("Histogram")
+            plt.grid()
+            plt.legend()
+            plt.title("Histogram of distances")
+            plt.show()
+
+            
 
     ## angle analysis
     amin        = 80.
     amax        = 100.
     cutoff      = 3.0
-    centralAtom = "Co"
+    centralAtom = "Mn"
     ligandAtom  = "O"
     sigma       = .5
     npts        = 200
     if calcAngle:
-        getAngles(struct, sigma, npts, amin, amax, cutoff, centralAtom, ligandAtom)
+        x, h = getAngles(struct, sigma, npts, amin, amax, cutoff, centralAtom, ligandAtom)
+
+        if plot:
+            plt.plot(x, h, "k-")
+            plt.xlabel("Angle   /   degree")
+            plt.ylabel("Histogram")
+            plt.grid()
+            plt.title("Histogram of angles %s-%s-%s" % (ligandAtom, \
+                centralAtom, ligandAtom))
+            plt.show()
 
 def getAngles(struct, sigma, npts, amin, amax, cutoff, centralAtom, ligandAtom):
     """ compute all angles  """
@@ -100,72 +80,43 @@ def getAngles(struct, sigma, npts, amin, amax, cutoff, centralAtom, ligandAtom):
     print("Ligand atom  : %s" % ligandAtom)
     print("cutoff       : %f" % cutoff)
 
+    # central sites
+    central_sites = [site for site in struct 
+                          if site.specie == mg.Element(centralAtom)]
+
     # x values for histogram
     aval = np.linspace(amin, amax, npts)
 
     # data
     data = np.zeros(npts)
-    nNeighbor = list()
-
-    for iat in range(struct.Natoms):
-
-        if struct.atomNames[iat] != centralAtom:
-            continue
-
-        riat = np.array([val for val in struct.redCoord[iat]]) # hard copy ?
-
-        neighbors = list()
-        for jat in range(struct.Natoms):
-
-            if struct.atomNames[jat] != ligandAtom:
-                continue
-
-            # compute distance for each possible image
-            rjat0 = np.array([val for val in struct.redCoord[jat]]) # hard copy ?
-            for tr in trans:
-                rjat = rjat0 + tr
-
-                xij = struct.red2cart(rjat - riat)
-                distance = np.sqrt(xij[0]**2 + xij[1]**2 + xij[2]**2)
-
-                if distance > cutoff:
-                    continue
-
-                same = False
-                for neigbhor in neighbors:
-                    dn, xn = neigbhor
-                    d = np.sqrt((xn[0] - xij[0])**2 \
-                              + (xn[1] - xij[1])**2 \
-                              + (xn[2] - xij[2])**2)
-                    if d < 1.e-5:
-                        same = True
-                        break
-
-                if not same:
-                    neighbors.append((distance, xij))
-
-        # compute bending angles and build histogram
-        n = len(neighbors)
-        nNeighbor.append((iat, struct.atomNames[iat], n))
-        for i in range(n):
-            di, xi = neighbors[i]
-            for j in range(i + 1, n):
-                dj, xj = neighbors[j]
- 
-                scal = np.dot(xi, xj) / di / dj
-                if np.fabs(scal) > 1.:
-                    print("Dot product error : %f" % scal)
-                    exit(1)
-                angle = np.arccos(scal) * 180.0 / np.pi
-
-                # add a gaussian
-                data += np.array([g(a, angle, sigma) for a in aval])
 
     print("\nCoordinence")
-    for iat, name, n in nNeighbor:
-        print("%5s(%2d)  : %d" % (name.rjust(5), iat, n))
+    for csite in central_sites:
+        neighbors = [(site, d) for site, d in struct.get_neighbors(csite, cutoff) 
+                               if site.specie == mg.Element(ligandAtom)]
+        iat = struct.index(csite)
+        print("%5s(%2d)  : %d" % (csite.specie.symbol, iat, len(neighbors)))
+
+                    #neighbors.append((distance, xij))
+
+        # compute bending angles and build histogram
+        for i in range(len(neighbors)):
+            isite, di = neighbors[i]
+            xic = isite.coords - csite.coords
+            for j in range(i + 1, len(neighbors)):
+                jsite, dj = neighbors[j]
+                xjc = jsite.coords - csite.coords
+                scal = np.dot(xic, xjc) / di / dj
+                if np.fabs(scal) > 1.:
+                    print("Dot product error : %f" % scal)
+                    raise ValueError
+                angle = np.degrees(np.arccos(scal))
+
+                # add a gaussian function
+                data += norm.pdf(aval, loc=angle, scale=sigma)
+
     # print data
-    line  = "# structural analysis %s\n" % struct.name
+    line  = "# structural analysis\n"
     line += "# column 1 : angle (degree)\n"
     line += "# column 2 : histogram of angle %s-%s-%s\n" % (ligandAtom, centralAtom, ligandAtom)
     for a, h in zip(aval, data):
@@ -174,51 +125,43 @@ def getAngles(struct, sigma, npts, amin, amax, cutoff, centralAtom, ligandAtom):
     print("\n=> Print file anaAngles.dat\n")
     open("anaAngles.dat", "w").write(line)
 
+    return aval, data
 
 def getDistances(struct, sigma, npts, xmin, xmax):
     """ compute all distances """
 
     # system composition
-    atomTypes = list()
-    for name in struct.atomNames:
-        if name not in atomTypes:
-            atomTypes.append(name.strip())
-
-    NAtomsType = len(atomTypes)
+    atomTypes = [e.symbol for e in struct.composition.elements]
+    NAtomsType = len(struct.composition.elements)
 
     print("\nBond length analyses :")
     print(  "----------------------")
-    print("Atoms   : {0}".format(" ; ".join(atomTypes)))
-    print("N atoms : {0}".format(NAtomsType))
+    print("Atoms   : ", " ; ".join(atomTypes))
+    print("N atoms : ", NAtomsType)
 
     # bond types
     bondsList = list()
     for ityp in range(NAtomsType):
-        for jtyp in range(ityp + 1, NAtomsType):
+        for jtyp in range(ityp, NAtomsType):
             bondsList.append(atomTypes[ityp] + "-" + atomTypes[jtyp])
 
     NBondsType = len(bondsList)
-    print("N bonds : {0}".format(NBondsType))
-    print("Bonds   : {0}".format(" ; ".join(bondsList)))
+    print("N bonds : ", (NBondsType))
+    print("Bonds   : " + " ; ".join(bondsList))
 
     # x values for histogram
     xval = np.linspace(xmin, xmax, npts)
 
     # histogram
     data = dict()
-    for bond in bondsList:
-        data[bond] = np.zeros(npts)
 
     # compute all distances
-    for iat in range(struct.Natoms):
-        for jat in range(iat + 1, struct.Natoms):
-
-            # continue if same atom type
-            if struct.atomNames[iat] == struct.atomNames[jat]:
-                continue
+    Natoms = len(struct)
+    for iat in range(Natoms):
+        for jat in range(iat + 1, Natoms):
 
             # compute the cartesian coordinate and the distance
-            distance = struct.dist_r(struct.redCoord[iat], struct.redCoord[jat])
+            distance = struct.get_distance(iat, jat)
 
             # xmax act as a cutoff
             if distance > xmax:
@@ -226,16 +169,19 @@ def getDistances(struct, sigma, npts, xmin, xmax):
 
             # select the relevant bond
             for bond in bondsList:
-                if struct.atomNames[iat] in bond and struct.atomNames[jat] in bond:
+                if struct[iat].specie.symbol in bond and \
+                   struct[jat].specie.symbol in bond:
                     selectedBond = bond
                     break
 
             # add a gaussian
-            gaussVal = np.array([g(x, distance, sigma) for x in xval])
-            data[selectedBond] += gaussVal
+            if selectedBond in data:
+                data[selectedBond] += norm.pdf(xval, loc=distance, scale=sigma)
+            else:
+                data[selectedBond] = norm.pdf(xval, loc=distance, scale=sigma)
 
     # print data
-    line  = "# structural analysis %s\n" % struct.name
+    line  = "# structural analysis \n"
     line += "# column 1 : x (A)\n"
     for i, bond in enumerate(data.keys()):
         line += "# column %d : bond %s \n" % (i + 2, bond)
@@ -248,5 +194,13 @@ def getDistances(struct, sigma, npts, xmin, xmax):
     print("\n=> Print file anaDistances.dat\n")
     open("anaDistances.dat", "w").write(line)
 
+    return xval, data
+
 if __name__ == "__main__":
-    anaStruct()
+    # poscar name
+    if len(sys.argv) == 2:
+        poscar = sys.argv[1]
+    else:
+        poscar = "CONTCAR"
+    anaStruct(poscar)
+
