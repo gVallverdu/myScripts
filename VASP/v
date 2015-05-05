@@ -28,6 +28,11 @@ SUB-COMMANDS
             copy necessary files for a restart calculation into a restart
             directory. None of the copied files are modified.
 
+        lr
+            copy and save necessary files for restarting the calculation in the
+            current directory. OSZICAR, OUTCAR, POSCAR and vasprun.xml files
+            are saved.
+
         sp
             copy the necessary files for an energy calculation into a 
             SinglePoint directory. In the new INCAR file, the following 
@@ -201,7 +206,7 @@ def check():
     """ check options """
 
     options = ["h", "help", "-h", "--help",
-               "clean", "sp", "spb", "restart", "purge",
+               "clean", "sp", "spb", "restart", "purge", "lr",
                "cell", "cl", "chgsum", "charges", "cvg",
                "tdos", "pdos", "mag", "dep", "atdos",
                "forces", "supercell", "neighbors", "allneighbors"]
@@ -241,6 +246,8 @@ def select():
         makeSPBader()
     elif opt == "restart":
         makeRestart("restart")
+    elif opt == "lr":
+        makeLocalRestart()
     elif opt == "purge":
         purgeRuns()
 
@@ -426,12 +433,48 @@ def select():
     else:
         _die("This option is still not implemented")
 
-    if opt in ["sp", "spb", "restart"]:
+    if opt in ["sp", "spb", "restart", "lr"]:
         print("\nCAREFULLY look at the input files before running the calculation")
 
 # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
 # Manage calculations
 # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+
+def makeLocalRestart():
+    """ save useful files for restarting a vasp calculation """
+
+    def saveFile(f, n, ext=""):
+        """ backup a file """
+        fbase = os.path.splitext(f)[0]
+        print("cp %11s -> %s_%d%s" % (f, fbase, n + 1, ext))
+        shutil.copy(os.path.join(wd, "%s" % f), 
+                    os.path.join(wd ,"%s_%d%s" % (fbase, n + 1, ext)))
+
+    wd = os.getcwd()
+
+    # save first POSCAR
+    if not os.path.exists(os.path.join(wd, "POSCAR_ini.vasp")):
+        print("cp POSCAR -> POSCAR_ini.vasp")
+        shutil.copy(os.path.join(wd, "POSCAR"), os.path.join(wd, "POSCAR_ini.vasp"))
+
+    # restart number
+    n = len(fnmatch.filter(os.listdir(wd), "CONTCAR_*.vasp"))
+    print("restart number %d" % (n + 1))
+
+    print("\nbackup some files")
+    # save CONTCAR
+    saveFile("CONTCAR", n, ext=".vasp")
+    # save OSZICAR
+    saveFile("OSZICAR", n)
+    # save OUTCAR
+    saveFile("OUTCAR", n)
+    # save vasprun
+    saveFile("vasprun.xml", n, ext=".xml")
+
+    # copy CONTCAR -> POSCAR
+    print("\nset up the new calculation")
+    print("cp CONTCAR -> POSCAR")
+    shutil.copy(os.path.join(wd, "CONTCAR"), os.path.join(wd ,"POSCAR"))
 
 def makeRestart(dirname):
     """ copy necessary files for restarting a vasp calculation """

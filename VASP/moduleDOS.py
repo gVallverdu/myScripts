@@ -189,7 +189,7 @@ class CrossSecSpecie(object):
     @property
     def d_five_halves(self):
         """
-        p3/2 cross section
+        d5/2 cross section
         """
         return self._d2
 
