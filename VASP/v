@@ -161,8 +161,14 @@ import sys
 import os
 import shutil
 import fnmatch
+import numpy as np
+import matplotlib.pyplot as plt
 
 from math import sqrt, acos, pi, fabs, ceil
+
+import pymatgen as mg
+from pymatgen.io.vaspio.vasp_input import Incar, Potcar
+from pymatgen.io.vaspio.vasp_output import Outcar
 
 __author__ = "Germain Salvato-Vallverdu"
 __email__ = "germain.vallverdu@univ-pau.fr"
@@ -342,7 +348,21 @@ def select():
         plot_at_dos(iat, xmlfile)
 
     elif opt == "mag":
-        get_mag()
+        full = False
+        th = .2
+        if len(sys.argv) > 2:
+            if "full" in sys.argv[2:]:
+                full = True
+            try:
+                th = float(sys.argv[-1])
+            except ValueError:
+                print("Waring, threshold value not found or wrong value")
+                print("Set default value")
+                th = .2
+            finally:
+                print("th = ", th)
+                
+        get_mag(full, th)
 
     elif opt == "charges":
         if len(sys.argv) == 3:
@@ -804,54 +824,47 @@ def coreLevel():
 
     AOname = ["s", "p", "d", "f"]
 
-    try:
-        from pymatgen.io.vaspio.vasp_output import Outcar
-        from pymatgen.io.vaspio.vasp_input import Incar
-        import pymatgen as mg
+    cl = Outcar("OUTCAR").read_core_state_eigen()
+    symbol = [specie.symbol for specie in mg.Structure.from_file("POSCAR").species]
 
-        cl = Outcar("OUTCAR").read_core_state_eigen()
-        symbol = [specie.symbol for specie in mg.Structure.from_file("POSCAR").species]
+    if len(sys.argv) == 2:
+        # try to read from INCAR
+        incar = Incar.from_file("INCAR")
+        iat = incar["CLNT"]
 
-        if len(sys.argv) == 2:
-            # try to read from INCAR
-            incar = Incar.from_file("INCAR")
-            iat = incar["CLNT"]
+        n = incar["CLN"]
+        l = incar["CLL"]
 
-            n = incar["CLN"]
-            l = incar["CLL"]
+        ao = "%d%s" % (n, AOname[l])
 
-            ao = "%d%s" % (n, AOname[l])
+    elif sys.argv[2] == "select":
+        # ask for atom number and orbital
+        print("    atom    Atomic orbital")
+        for iat, cl_at in enumerate(cl):
+            line = "%4s %4d    " % (symbol[iat], iat + 1)
+            line += "   ".join(cl_at.keys())
+            print(line)
 
-        elif sys.argv[2] == "select":
-            # ask for atom number and orbital
-            print("    atom    Atomic orbital")
-            for iat, cl_at in enumerate(cl):
-                line = "%4s %4d    " % (symbol[iat], iat + 1)
-                line += "   ".join(cl_at.keys())
-                print(line)
+        iat = int(raw_input("Atom number : "))
+        ao = raw_input("atomic orbital : ")
 
-            iat = int(raw_input("Atom number : "))
-            ao = raw_input("atomic orbital : ")
+    else:
+        # atom and AO selected from command line
+        try:
+            iat = int(sys.argv[2])
+        except ValueError:
+            _die("Error atom number must be an integer", 1)
 
-        else:
-            # atom and AO selected from command line
-            try:
-                iat = int(sys.argv[2])
-            except ValueError:
-                _die("Error atom number must be an integer", 1)
+        ao = sys.argv[3]
 
-            ao = sys.argv[3]
+    # print core state energy
+    if cl[iat-1].has_key(ao):
+        print("atom %d -> %2s_%2s = %f eV" % (iat, symbol[iat-1], ao, \
+            cl[iat-1][ao][-1]))
+    else:
+        _die("Atom index and AO unconsistent.\
+            \n    atom: %s %d\n    AO  : %s" % (symbol[iat-1], iat, ao), 1)
 
-        # print core state energy
-        if cl[iat-1].has_key(ao):
-            print("atom %d -> %2s_%2s = %f eV" % (iat, symbol[iat-1], ao, \
-                cl[iat-1][ao][-1]))
-        else:
-            _die("Atom index and AO unconsistent.\
-                \n    atom: %s %d\n    AO  : %s" % (symbol[iat-1], iat, ao), 1)
-
-    except ImportError:
-        _die("\n ## Pymatgen may be not available ##", 1)
 
 def plot_total_dos(xmlfile="vasprun.xml", tofile=False):
     """ Plot total DOS using matplotlib """
@@ -1114,7 +1127,7 @@ def plot_at_dos(iat, xmlfile="vasprun.xml"):
 
     open("DOS_%s%d.dat" % (site.specie.symbol, iat), "w").write(lines)
 
-def get_mag():
+def get_mag(full=False, plotThreshold=.1):
     """ Read OUTCAR and POSCAR file and print magnetization """
 
     # import pymatgen
@@ -1136,6 +1149,7 @@ def get_mag():
 
     # print
     p = Poscar.from_file("POSCAR")
+    print("\n# ---------------------------------------")
     print("# magnetization for each atom")
     print("# ---------------------------------------")
     print("# iat name   s       p       d       tot")
@@ -1149,6 +1163,69 @@ def get_mag():
         print(line)
     print("# ---------------------------------------")
     
+    # ionic optimization case, follow magnetization
+    if full:
+        # read all magnetization
+        with open("OUTCAR", "r") as f:
+            outcar = f.readlines()
+
+        # locate magnetization data
+        positions = [i for i, line in enumerate(outcar) 
+                         if "magnetization (x)" in line]
+
+        # delete the last position (duplicate)
+        positions.pop(-1)
+        nstep = len(positions)
+
+        # read values
+        moments = list()
+        for pos in positions:
+            imom = list()
+            for line in outcar[pos + 4:]:
+                if "----" in line:
+                    break
+                imom.append(float(line.split()[4]))
+            moments.append(imom)
+        moments = np.array(moments)
+
+        # do not plot moments if magnetization < plotThreshold
+        Natoms = len(p.structure)
+        plotList = np.where(np.max(np.fabs(moments), axis=0) > plotThreshold, 
+                            Natoms * [True], Natoms * [False])
+        
+        # plot
+        font = {'family': 'sans', 'size': 18}
+        plt.rc('font', **font)
+        plt.figure(figsize=(11.69, 8.27)) # A4
+        ax = plt.subplot(111)
+        box = ax.get_position()
+        ax.set_position([box.x0, box.y0, box.width * .9, box.height])
+        plt.xlim((-.5, nstep + -.5))
+        plt.xticks(range(nstep))
+        plt.grid()
+        plt.xlabel("Ionic step")
+        plt.ylabel("Magnetization")
+        for iat in range(Natoms):
+            if plotList[iat]:
+                plt.plot(range(nstep), [m[iat] for m in moments],
+                         linestyle="--", marker="o",
+                         label=r"$%s_{%d}$" % (p.structure.species[iat], iat))
+        plt.legend(loc="center left", bbox_to_anchor=(1, .5), fontsize="small")
+        plt.show()
+
+        # save data to file
+        with open("magnetization.dat", "w") as f:
+            f.write("# Magnetization data as a function of the ionic step\n")
+            f.write("# column 1: ionic step\n")
+            nc = 1
+            for iat in range(Natoms):
+                if plotList[iat]:
+                    nc += 1
+                    f.write("# column %d: atom %s_%d\n" % (nc, p.structure.species[iat], iat))
+            for i, moment in enumerate(moments):
+                line = "%4d" % i
+                line += "".join(["%8.3f" % moment[iat] for iat in range(Natoms) if plotList[iat]])
+                f.write(line + "\n")
 
 def charges(filename=None):
     """
@@ -1161,7 +1238,6 @@ def charges(filename=None):
         * a ACF.dat file (bader output)
         * a POSCAR/CONTCAR file of the structure (read atom names).
         * a POTCAR file (read valence electron)
-
     """
 
     try:
@@ -1270,8 +1346,6 @@ def charges(filename=None):
 def showcvg(xmlfile="vasprun.xml"):
     """ Output graphs for looking at convergence of the calculation """
 
-    import numpy as np
-    
     # load pymatgen
     try:
         from pymatgen.io.vaspio.vasp_output import Oszicar
@@ -1390,7 +1464,6 @@ def showcvg(xmlfile="vasprun.xml"):
 def get_forces(outfile):
     """ Read and print forces acting on each ion """
 
-    import numpy as np
     try:
         import pymatgen as mg
         from pymatgen.io.vaspio.vasp_input import Incar
@@ -1526,7 +1599,6 @@ def chgsum():
 def get_deplacement(xmlfile="vasprun.xml", fs1=None, fs2=None):
     """ get displacement between two structures """
 
-    import numpy as np
     try:
         from pymatgen.io.vaspio.vasp_output import Vasprun
         import pymatgen as mg
