@@ -162,13 +162,20 @@ import os
 import shutil
 import fnmatch
 import numpy as np
-import matplotlib.pyplot as plt
-
 from math import sqrt, acos, pi, fabs, ceil
 
-import pymatgen as mg
-from pymatgen.io.vaspio.vasp_input import Incar, Potcar
-from pymatgen.io.vaspio.vasp_output import Outcar
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    print("\n ## Matplotlib may be not available ##", 1)
+
+try:
+    import pymatgen as mg
+    from pymatgen.io.vaspio.vasp_input import Incar, Potcar, Poscar
+    from pymatgen.io.vaspio.vasp_output import Outcar, Vasprun, Oszicar, Chgcar
+    from pymatgen.electronic_structure.core import Spin
+except ImportError:
+    print("\n ## Pymatgen may be not available ##", 1)
 
 __author__ = "Germain Salvato-Vallverdu"
 __email__ = "germain.vallverdu@univ-pau.fr"
@@ -873,18 +880,6 @@ def plot_total_dos(xmlfile="vasprun.xml", tofile=False):
     if not os.path.exists(xmlfile):
         _die("File %s does not exist" % xmlfile, 1)
 
-    # import pymatgen and matplotlib
-    try:
-        from pymatgen.io.vaspio.vasp_output import Vasprun
-        from pymatgen.electronic_structure.core import Spin
-    except ImportError:
-        _die("\n ## Pymatgen may be not available ##", 1)
-
-    if not tofile:
-        try:
-            import matplotlib.pyplot as plt
-        except ImportError:
-            _die("\n ## Matplotlib may be not available ##", 1)
 
     # read
     run = Vasprun(xmlfile, parse_eigen=False)
@@ -939,19 +934,6 @@ def plot_proj_dos(xmlfile="vasprun.xml", tofile=False):
     # check xml file
     if not os.path.exists(xmlfile):
         _die("File %s does not exist" % xmlfile, 1)
-
-    # import pymatgen and matplotlib
-    try:
-        from pymatgen.io.vaspio.vasp_output import Vasprun
-        from pymatgen.electronic_structure.core import Spin
-    except ImportError:
-        _die("\n ## Pymatgen may be not available ##", 1)
-
-    if not tofile:
-        try:
-            import matplotlib.pyplot as plt
-        except ImportError:
-            _die("\n ## Matplotlib may be not available ##", 1)
 
     # read
     run = Vasprun(xmlfile, parse_eigen=False)
@@ -1052,13 +1034,6 @@ def plot_at_dos(iat, xmlfile="vasprun.xml"):
     if not os.path.exists(xmlfile):
         _die("File %s does not exist" % xmlfile, 1)
 
-    # import pymatgen
-    try:
-        from pymatgen.io.vaspio.vasp_output import Vasprun
-        from pymatgen.electronic_structure.core import Spin
-    except ImportError:
-        _die("\n ## Pymatgen may be not available ##", 1)
-
     # read
     run = Vasprun(xmlfile, parse_eigen=False)
     dos = run.complete_dos
@@ -1129,13 +1104,6 @@ def plot_at_dos(iat, xmlfile="vasprun.xml"):
 
 def get_mag(full=False, plotThreshold=.1):
     """ Read OUTCAR and POSCAR file and print magnetization """
-
-    # import pymatgen
-    try:
-        from pymatgen.io.vaspio.vasp_output import Outcar
-        from pymatgen.io.vaspio.vasp_input import Poscar
-    except ImportError:
-        _die("\n ## Pymatgen may be not available ##", 1)
 
     # check files exist
     for f in ["POSCAR", "OUTCAR"]:
@@ -1240,12 +1208,6 @@ def charges(filename=None):
         * a POTCAR file (read valence electron)
     """
 
-    try:
-        import pymatgen as mg
-        from pymatgen.io.vaspio.vasp_input import Potcar
-    except ImportError:
-        _die("\n ## Pymatgen may be not available ##", 1)
-
     #
     # read atom names
     #
@@ -1345,18 +1307,6 @@ def charges(filename=None):
 
 def showcvg(xmlfile="vasprun.xml"):
     """ Output graphs for looking at convergence of the calculation """
-
-    # load pymatgen
-    try:
-        from pymatgen.io.vaspio.vasp_output import Oszicar
-    except ImportError:
-        _die("\n ## Pymatgen may be not available ##", 1)
-
-    # load matplotlib
-    try:
-        import matplotlib.pyplot as plt
-    except ImportError:
-        _die("\n ## Matplotlib may be not available ##", 1)
 
     # check files
     for f in ["OSZICAR", "OUTCAR"]:
@@ -1464,12 +1414,6 @@ def showcvg(xmlfile="vasprun.xml"):
 def get_forces(outfile):
     """ Read and print forces acting on each ion """
 
-    try:
-        import pymatgen as mg
-        from pymatgen.io.vaspio.vasp_input import Incar
-    except ImportError:
-        _die("\n ## Pymatgen may be not available ##", 1)
-
     # read number of ions
     if os.path.exists("POSCAR"):
         struct = mg.Structure.from_file("POSCAR")
@@ -1544,11 +1488,6 @@ def get_forces(outfile):
 def chgsum():
     """ linear add of CHGCAR files """
 
-    try:
-        from pymatgen.io.vaspio.vasp_output import Chgcar
-    except ImportError:
-        _die("\n ## Pymatgen may be not available ##", 1)
-
     scale_factor = 1.
 
     # command line options
@@ -1598,12 +1537,6 @@ def chgsum():
 
 def get_deplacement(xmlfile="vasprun.xml", fs1=None, fs2=None):
     """ get displacement between two structures """
-
-    try:
-        from pymatgen.io.vaspio.vasp_output import Vasprun
-        import pymatgen as mg
-    except ImportError:
-        _die("\n ## Pymatgen may be not available ##", 1)
 
     if xmlfile:
         if not os.path.exists(xmlfile):
@@ -1675,12 +1608,6 @@ def make_supercell(nx=1, ny=1, nz=1):
         Print structure into a POSCAR file
     """
 
-    try:
-        import pymatgen as mg
-        from pymatgen.io.vaspio.vasp_input import Poscar
-    except ImportError:
-        _die("\n ## Pymatgen may be not available ##", 1)
-
     # file to read
     if os.path.exists("CONTCAR"):
         filename = "CONTCAR"
@@ -1704,10 +1631,6 @@ def neighbors(iat, radius=3.0, struct="POSCAR"):
     """
     Print the neighbor list of atom number iat.
     """
-    try:
-        import pymatgen as mg
-    except ImportError:
-        _die("\n ## Pymatgen may be not available ##", 1)
 
     print("read file ----> %s\n" % struct)
 
@@ -1726,11 +1649,6 @@ def all_neighbors(radius=3., struct="POSCAR"):
     """
     Print neighbors of all atoms in the cell.
     """
-    try:
-        import pymatgen as mg
-    except ImportError:
-        _die("\n ## Pymatgen may be not available ##", 1)
-
 
     # threshold for same neighbors
     th = 0.001
