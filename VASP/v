@@ -1214,10 +1214,12 @@ def charges(filename=None):
     if os.path.exists("POSCAR"):
         struct = mg.Structure.from_file("POSCAR")
         atomNames = [el.symbol for el in struct.species]
+        compo = struct.composition.as_dict()
 
     elif os.path.exists("CONTCAR"):
         struct = mg.Structure.from_file("CONTCAR")
         atomNames = [el.symbol for el in struct.species]
+        compo = struct.composition.as_dict()
 
     else:
         _die("ERROR: need a POSCAR/CONTCAR file to get atom names", 1)
@@ -1232,16 +1234,20 @@ def charges(filename=None):
     else:
         _die("ERROR: need a POTCAR file", 1)
 
-    lines = ""
-
     #
     # System composition and valence electron
     #
+    lines = "Data read on POTCAR file :\n"
     valence = dict()
+    nelect = 0
     for singlePotcar in potcar:
-        lines += "%3s     POTCAR : %10s     zval : %f\n" % \
-            (singlePotcar.element, singlePotcar.symbol, singlePotcar.zval)
+        lines += "%3s (x%d)    POTCAR : %6s     zval : %5.1f\n" % \
+                 (singlePotcar.element, compo[singlePotcar.element], \
+                  singlePotcar.symbol, singlePotcar.zval)
         valence[singlePotcar.element] = singlePotcar.zval
+        nelect += singlePotcar.zval * compo[singlePotcar.element]
+
+    lines += "\nTotal number of valence electrons : %d\n" % nelect
 
     #
     # read population from ACF.dat file
