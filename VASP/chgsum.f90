@@ -26,6 +26,11 @@ program chgsum
     real(kind=8), dimension(:,:,:), allocatable   :: rho1, rho2
 
     ! get arguments
+    if( command_argument_count() /= 3 ) then
+        write(*, *) "Syntax : CHGCAR1 CHGCAR2 scale_factor"
+        stop "STOP : bad numbers of arguments"
+    end if
+
     call get_command_argument(1, chgcar1)
     call get_command_argument(2, chgcar2)
     call get_command_argument(3, fact)
