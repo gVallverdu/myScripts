@@ -181,7 +181,7 @@ from math import sqrt, acos, pi, fabs, ceil
 try:
     import matplotlib.pyplot as plt
 except ImportError:
-    print("\n ## Matplotlib may be not available ##i\n")
+    print("\033[93m\n ## Matplotlib may be not available ##\n\033[0m")
 
 try:
     import pymatgen as mg
@@ -189,7 +189,7 @@ try:
     from pymatgen.io.vaspio.vasp_output import Outcar, Vasprun, Oszicar, Chgcar
     from pymatgen.electronic_structure.core import Spin
 except ImportError:
-    print("\n ## Pymatgen may be not available ##\n")
+    print("\033[93m\n ## Pymatgen may be not available ##\n\033[0m")
 
 __author__ = "Germain Salvato-Vallverdu"
 __email__ = "germain.vallverdu@univ-pau.fr"
@@ -198,18 +198,13 @@ __date__ = "June 2014"
 
 dashedLine = "".join(50 * ["-"])
 
-KILO_OCTET = 1024
-MEGA_OCTET = 1048576
-GIGA_OCTET = 1073741824
-TERA_OCTET = 1099511627776
-
 # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
 # General functions
 # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
 
 def _die(m="", code=0):
     """ print error and exit """
-    print(m)
+    Colors.cprint("r", m)
     exit(code)
 
 def question(message):
@@ -377,8 +372,8 @@ def select():
             try:
                 th = float(sys.argv[-1])
             except ValueError:
-                print("Waring, threshold value not found or wrong value")
-                print("Set default value")
+                Colors.cprint("y", "WARNING, threshold value not found or wrong value")
+                print("Set default value =>", end=" ")
                 th = .2
             finally:
                 print("th = ", th)
@@ -476,7 +471,7 @@ def select():
         _die("This option is still not implemented")
 
     if opt in ["sp", "spb", "restart", "lr"]:
-        print("\nCAREFULLY look at the input files before running the calculation")
+        Colors.cprint("y", "\nCAREFULLY look at the input files before running the calculation")
 
 # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
 # Manage calculations
@@ -569,7 +564,7 @@ def makeRestart(dirname):
             print("cp " + job + " -> " + ndir)
             shutil.copy(os.path.join(wd, job), ndir)
     else:
-        print("I did not find a job file, copy it by yourself")
+        Colors.cprint("y", "I did not find a job file, copy it by yourself")
 
 def makeSP():
     """ copy necessary files for a single point energy calculation into a
@@ -592,7 +587,7 @@ def makeSP():
     makeRestart(dirname)
 
     # read INCAR and delete or change lines
-    print("\n# Changing INCAR file")
+    Colors.cprint("y", "\n# setting up INCAR file")
     incar = open(os.path.join(wd, "INCAR"), "r").readlines()
 
     lorbit = False
@@ -716,38 +711,11 @@ def cleanVasp():
             print("rm " + os.path.join(wd, f))
             os.remove(os.path.join(wd, f))
 
-def humanSize(taille):
-    """ return a byte number in human readable format (1ko 234Mo 2Go)
-
-    >>> humanSize(345)
-    '345 o'
-    >>> humanSize(123478)
-    '120.6 ko'
-    >>> humanSize(983435743)
-    '937.9 Mo'
-    >>> humanSize(12983435743)
-    '12.1 Go'
-    >>> humanSize(755812983435743)
-    '687.4 To'
-
-    """
-    taille = float(taille)
-    if taille >= TERA_OCTET:
-        size = "%.1f To" % (taille / TERA_OCTET)
-    elif taille >= GIGA_OCTET:
-        size = "%.1f Go" % (taille / GIGA_OCTET)
-    elif taille >= MEGA_OCTET:
-        size = "%.1f Mo" % (taille / MEGA_OCTET)
-    elif taille >= KILO_OCTET:
-        size = "%.1f ko" % (taille / KILO_OCTET)
-    else:
-        size = "%.0f o" % taille
-
-    return size
 
 def purgeRuns():
-    """ delete WAVECAR, CHGCAR, CHG, AECCAR* in current directory and all
-        subdirectories 
+    """ 
+    delete WAVECAR, CHGCAR, CHG, AECCAR* in current directory and all
+    subdirectories 
     """
 
     filenames = ["WAVECAR", "CHG", "CHGCAR*", "AECCAR*"]
@@ -768,7 +736,7 @@ def purgeRuns():
                         delfile.append(fname)
 
     print(dashedLine)
-    print(" Total size of deleted files : " + humanSize(taille))
+    print(" Total size of deleted files : " + HumanSize.compute(taille))
     print(dashedLine)
     print(" Deleted files are :")
     for f in delfile:
@@ -1183,8 +1151,7 @@ def get_mag(full=False, plotThreshold=.1):
         ax = plt.subplot(111)
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * .9, box.height])
-        plt.xlim((-.5, nstep + -.5))
-        plt.xticks(range(nstep))
+        #plt.xlim((-.5, nstep + -.5))
         plt.grid()
         plt.xlabel("Ionic step")
         plt.ylabel("Magnetization")
@@ -1324,7 +1291,8 @@ def charges(filename=None):
     if not filename:
         print(lines)
     else:
-        open(filename, "w").write(lines)
+        with open(filename, "w") as fout:
+            fout.write(lines)
 
 def readSelectiveDynamics(f="POSCAR"):
     """ 
@@ -1357,7 +1325,7 @@ def readSelectiveDynamics(f="POSCAR"):
                     else:
                         freeze.append([False] + line)
             else:
-                print("Selective Dynamics is not present in %s" % f)
+                Colors.cprint("y", "Selective Dynamics is not present in %s" % f)
                 freeze = [[False, " ", " ", " "] for iat in xrange(nat)]
 
     else:
@@ -1538,21 +1506,16 @@ def get_forces(outfile):
     print(" iat at   freeze     fx        fy        fz          f            cvg")
     print(72 * "-")
     for iat in xrange(nat):
-        fmt = "%4d %3s  " + 3*"%2s" + 3*"%10.4f" + " %10.3f"
+        m = ("%4d %3s  " + 3*"%2s" + 3*"%10.4f" + " %10.3f") % \
+            tuple([iat+1, struct[iat].specie.symbol] + freeze[iat][1:] + forces[iat])
         if freeze[iat][0]:
-            print((fmt + "  frozen") % \
-                tuple([iat+1, struct[iat].specie.symbol] + freeze[iat][1:] + forces[iat]))
+            Colors.cprint("b", m + "  frozen")
         else:
             if ediffg < 0:
                 if forces[iat][-1] < -ediffg:
-                    print((fmt + "         cvg") % \
-                       tuple([iat+1, struct[iat].specie.symbol] + freeze[iat][1:] + forces[iat]))
+                    Colors.cprint("g", m + "        cvg")
                 else:
-                    print(fmt % \
-                       tuple([iat+1, struct[iat].specie.symbol] + freeze[iat][1:] + forces[iat])) 
-            else:
-                print(fmt % \
-                    tuple([iat+1, struct[iat].specie.symbol] + freeze[iat][1:] + forces[iat]))
+                    Colors.cprint("r", m)
     print(72 * "-")
 
 # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
@@ -1623,7 +1586,7 @@ def get_deplacement(xmlfile="vasprun.xml", fs1=None, fs2=None):
         except:
             fs1 = "POSCAR"
             fs2 = "CONTCAR"
-            print("\n# BAD RUN TERMINATION #, I try to read POSCAR and CONTCAR\n")
+            Colors.cprint("y", "\n# BAD RUN TERMINATION #, I try to read POSCAR and CONTCAR\n")
             xmlfile = None
 
     if fs1 and fs2:
@@ -1757,6 +1720,78 @@ def all_neighbors(radius=3., struct="POSCAR"):
         for neig in uneq:
             site, d, n = neig
             print("    %3s (%2d): %10.4f" % (site.specie.symbol, n, d))
+
+# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+# various tools
+# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+
+class Colors(object):
+    """ a tool in order to print with color """
+    BLACK = '\033[30m'
+    RED = '\033[91m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    BLUE = '\033[94m'
+    VIOLET = '\033[95m'
+    CYAN = '\033[96m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+
+    avail = {"v": VIOLET, "b": BLUE, "g": GREEN, "c": CYAN, "y": YELLOW,
+             "warning": WARNING, "r": RED, "fail": FAIL, "k": BLACK, "w": ENDC}
+
+    @classmethod
+    def cprint(cls, color, m):
+        """ print m in color """
+        if color in cls.avail:
+            print(cls.avail[color] + m + cls.ENDC)
+        else:
+            print(cls.WARNING + "%s not available \t" % color + cls.ENDC + m)
+
+    @classmethod
+    def show(cls, m="toto"):
+        """ display all available colors """
+        for color in cls.avail:
+            cls.cprint(color, "%-8s : %s" % (color, m))
+
+class HumanSize(object):
+    """ convert octet size in human format """
+
+    KILO_OCTET = 1024
+    MEGA_OCTET = 1048576
+    GIGA_OCTET = 1073741824
+    TERA_OCTET = 1099511627776
+
+    @classmethod
+    def compute(cls, taille):
+        """ return a byte number in human readable format (1ko 234Mo 2Go)
+
+        >>> HumanSize.compute(345)
+        '345 o'
+        >>> HumanSize.compute(123478)
+        '120.6 ko'
+        >>> HumanSize.compute(983435743)
+        '937.9 Mo'
+        >>> HumanSize.compute(12983435743)
+        '12.1 Go'
+        >>> HumanSize.compute(755812983435743)
+        '687.4 To'
+
+        """
+        taille = float(taille)
+        if taille >= cls.TERA_OCTET:
+            size = "%.1f To" % (taille / cls.TERA_OCTET)
+        elif taille >= cls.GIGA_OCTET:
+            size = "%.1f Go" % (taille / cls.GIGA_OCTET)
+        elif taille >= cls.MEGA_OCTET:
+            size = "%.1f Mo" % (taille / cls.MEGA_OCTET)
+        elif taille >= cls.KILO_OCTET:
+            size = "%.1f ko" % (taille / cls.KILO_OCTET)
+        else:
+            size = "%.0f o" % taille
+
+        return size
 
 if __name__ == "__main__":
     check()
