@@ -1408,10 +1408,19 @@ def showcvg(xmlfile="vasprun.xml"):
                             avecst += forces[iat]
                             cstmax = max(cstmax, forces[iat])
                             cstmin = min(cstmin, forces[iat])
-                    ave /= float(nions - nfreeze)
-                    av2 /= float(nions - nfreeze)
+                    if nions - nfreeze != 0:
+                        ave /= float(nions - nfreeze)
+                        av2 /= float(nions - nfreeze)
+                    else:
+                        Colors.cprint("y", "WARNINGS, all ions seems to be frozen")
+                        ave /= float(nions)
+                        av2 /= float(nions)
                     av2 = sqrt(av2 - ave**2)
-                    avecst /= float(nfreeze)
+
+                    if nfreeze != 0:
+                        avecst /= float(nfreeze)
+                    else:
+                        avecst = 0.
 
                     fmax.append(valmax)
                     fave.append(ave)
@@ -1457,9 +1466,10 @@ def showcvg(xmlfile="vasprun.xml"):
         graph3.plot(fmax, "r", label="max")
         graph3.plot(fave, "g", label="ave")
         graph3.plot(fstd, "c", label="std")
-        graph3.plot(fcstmax, "b--", label="max frozen")
-        #graph3.plot(fcstmin, "b--")
-        graph3.legend(ncol=2, fancybox=True, shadow=True, loc="right",
+        if nfreeze != 0:
+            graph3.plot(fcstmax, "b--", label="max frozen")
+            #graph3.plot(fcstmin, "b--")
+        graph3.legend(ncol=2, fancybox=True, shadow=True, loc="upper right",
         prop={"size": 14})
         graph3.set_title("Forces on ions")
         if ediffg < 0.:
