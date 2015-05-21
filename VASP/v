@@ -104,9 +104,17 @@ SUB-COMMANDS
             projected DOS on atom index iat and dump the data into a file.
             iat goes from 1 to the number of atom.
 
-        mag
+        mag [full, threshold]
             read OUTCAR and POSCAR file and print magnetization of each atom at
-            the last ionic step.
+            the last ionic step. 
+            If 'full' is present, magnetization are plotted and printed into a
+            file for all ionic step but only for atoms whit a magnetic moment
+            higher than the treshold.o
+
+            Examples: 
+                v mag
+                v full
+                v full .2
 
         charges [FILENAME]
             After a bader calculation
@@ -126,7 +134,7 @@ SUB-COMMANDS
     Compute data
     ------------
 
-        chgsum [CHGCAR1] [CHGCAR2] [factor]
+        chgsum CHGCAR1 CHGCAR2 factor
             Compute CHGCAR1 + factor * CHGCAR2 where CHGCAR are denisty file.
             This command needs pymatgen.
 
@@ -139,12 +147,18 @@ SUB-COMMANDS
             Build a supercell with the dimension NX*a x NY*b x NZ*c and ouput
             it in a POSCAR file.
 
-        neighbors [iat] [radius] [FILE]
-            Print the neighbor list of atom [iat] in a sphere of radius
-            [radius]. The structure is read on [FILE]. The radius is in
-            angstrom.
+            Example:
+                v supercell 2 3 1
 
-        allneighbors [radius] [FILE]
+        neighbors iat radius [FILE]
+            Print the neighbor list of atom [iat] in a sphere of radius
+            [radius]. The structure is read on [FILE] (defautl value is
+            'POSCAR'). The radius is in angstrom. 
+
+            Example:
+                v neighbors 2 3.5
+
+        allneighbors radius [FILE]
             Print all neighbors of all atoms in a sphere of radius [radius].
             The structure is read on [FILE]. The radius is in angstrom.
 
@@ -167,7 +181,7 @@ from math import sqrt, acos, pi, fabs, ceil
 try:
     import matplotlib.pyplot as plt
 except ImportError:
-    print("\n ## Matplotlib may be not available ##", 1)
+    print("\n ## Matplotlib may be not available ##i\n")
 
 try:
     import pymatgen as mg
@@ -175,7 +189,7 @@ try:
     from pymatgen.io.vaspio.vasp_output import Outcar, Vasprun, Oszicar, Chgcar
     from pymatgen.electronic_structure.core import Spin
 except ImportError:
-    print("\n ## Pymatgen may be not available ##", 1)
+    print("\n ## Pymatgen may be not available ##\n")
 
 __author__ = "Germain Salvato-Vallverdu"
 __email__ = "germain.vallverdu@univ-pau.fr"
@@ -412,8 +426,9 @@ def select():
                 ny = int(sys.argv[3])
                 nz = int(sys.argv[4])
             except ValueError:
-                _die("nx, ny, nz must be an integer", 1)
+                _die("nx, ny, nz must be a integers", 1)
         else:
+            print("\nusage : v supercell 2 3 1")
             _die("Incorrect number of arguments", 1)
 
         make_supercell(nx, ny, nz)
@@ -1311,19 +1326,63 @@ def charges(filename=None):
     else:
         open(filename, "w").write(lines)
 
+def readSelectiveDynamics(f="POSCAR"):
+    """ 
+    Read slective dynamics info on a POSCAR file and return a boolean and the
+    constraints.
+        * freeze is True if there is one 'F' for the considered atom
+        * freeze is False if the three flags are 'T' for the considered atom'
+    
+    Returns:
+        freeze (list): list of [bool, "F/T", "F/T", "F/T"]
+    """
+
+    if os.path.exists(f):
+        with open(f, "r") as poscarfile:
+            poscar = poscarfile.readlines()
+            try:
+                # vasp 5
+                nat = sum([int(val) for val in poscar[6].split()])
+            except ValueError:
+                # vasp 4
+                nat = sum([int(val) for val in poscar[5].split()])
+
+            if poscar[7][0].lower() == "s":
+                freeze = list()
+                iat = 0
+                for iat in xrange(nat):
+                    line = [el.upper() for el in poscar[9 + iat].split()[3:6]]
+                    if "F" in line:
+                        freeze.append([True] + line)
+                    else:
+                        freeze.append([False] + line)
+            else:
+                print("Selective Dynamics is not present in %s" % f)
+                freeze = [[False, " ", " ", " "] for iat in xrange(nat)]
+
+    else:
+        _die("\nError, I need a POSCAR file", 1)
+
+    return freeze
+
 def showcvg(xmlfile="vasprun.xml"):
     """ Output graphs for looking at convergence of the calculation """
 
     # check files
-    for f in ["OSZICAR", "OUTCAR"]:
+    for f in ["OSZICAR", "OUTCAR", "POSCAR"]:
         if not os.path.exists(f):
             _die("File %s does not exist" % f, 1)
 
     # read data
+    freeze = readSelectiveDynamics("POSCAR")
+    nions = len(freeze)
+    nfreeze = [el[0] for el in freeze].count(True)
     osz = Oszicar("OSZICAR")
     nionic_steps = len(osz.ionic_steps)
 
     print(" * N ionic steps: %d" % nionic_steps)
+    print(" * N ions       : %d" % nions)
+    print(" * N ions frozen: %d" % nfreeze)
 
     if nionic_steps == 1:
         # electronic convergence only
@@ -1344,42 +1403,64 @@ def showcvg(xmlfile="vasprun.xml"):
         e_fr_energy = [it["F"] for it in osz.ionic_steps]
 
         # read forces
-        out = open("OUTCAR", "r")
+        with open("OUTCAR", "r") as out:
+            fmax = list()
+            fave = list()
+            fstd = list()
+            fcst = list()
+            fcstmax = list()
+            fcstmin = list()
 
-        fmax = list()
-        fave = list()
-        fstd = list()
-
-        line = out.readline()
-        while line != "":
             line = out.readline()
-            if "NIONS" in line:
-                nions = int(line.split("NIONS =")[1])
-                print(" * N ions       : %d" % nions)
+            while line != "":
+                line = out.readline()
+                if "EDIFFG" in line:
+                    ediffg = float(line.split()[2])
+                    print(" * EDIFFG       : %f" % ediffg)
 
-            if "EDIFFG" in line:
-                ediffg = float(line.split()[2])
-                print(" * EDIFFG       : %f" % ediffg)
+                if "TOTAL-FORCE" in line:
+                    out.readline()
+                    forces = np.array(
+                        [[float(fx) for fx in out.readline().split()[4:7]] 
+                                    for iat in xrange(nions)])
+                    forces = np.sqrt((forces**2).sum(axis=1))
+                    valmax = -1
+                    ave = 0.
+                    av2 = 0.
+                    avecst = 0.
+                    cstmax = -1
+                    cstmin = 1e10
 
-            if "TOTAL-FORCE" in line:
-                out.readline()
-                forces = np.array([[float(fx) 
-                    for fx in out.readline().split()[4:7]] 
-                        for iat in xrange(nions)])
-                forces = np.sqrt((forces**2).sum(axis=1))
-                fmax.append(forces.max())
-                fave.append(forces.mean())
-                fstd.append(forces.std())
+                    for iat in range(nions):
+                        if not freeze[iat][0]:
+                            valmax = max(valmax, forces[iat])
+                            ave += forces[iat]
+                            av2 += forces[iat]**2
+                        else:
+                            avecst += forces[iat]
+                            cstmax = max(cstmax, forces[iat])
+                            cstmin = min(cstmin, forces[iat])
+                    ave /= float(nions - nfreeze)
+                    av2 /= float(nions - nfreeze)
+                    av2 = sqrt(av2 - ave**2)
+                    avecst /= float(nfreeze)
+
+                    fmax.append(valmax)
+                    fave.append(ave)
+                    fstd.append(av2)
+                    fcst.append(avecst)
+                    fcstmax.append(cstmax)
+                    fcstmin.append(cstmin)
 
         delta_F = list()
         for i in range(nionic_steps-1):
             delta_F.append(fabs(e_fr_energy[i+1] - e_fr_energy[i]))
 
-        font = {'family': 'serif', 'size': 14}
+        font = {'family': 'sans', 'size': 18}
         plt.rc('font', **font)
         fig = plt.figure(figsize=(11.69, 8.27)) # A4
         fig.subplots_adjust(wspace=0.25)
-        fig.suptitle("VASP convergence")
+        fig.suptitle("VASP convergence", fontsize=24)
 
         # graph1 = total energy
         graph1 = fig.add_subplot(2, 2, 1)
@@ -1394,7 +1475,7 @@ def showcvg(xmlfile="vasprun.xml"):
         graph2.set_ylabel("$\Delta F$   /   eV")
         graph2.set_xlabel("ionic step")
         graph2.grid()
-        graph2.plot(delta_F)
+        graph2.plot(delta_F, "r")
         if ediffg > 0. :
             graph2.hlines(ediffg, 0, nionic_steps+1, color="k",
                 linestyle="--")
@@ -1405,10 +1486,14 @@ def showcvg(xmlfile="vasprun.xml"):
         graph3.set_ylabel("forces   /   eV/$\AA$")
         graph3.set_xlabel("ionic step")
         graph3.grid()
-        graph3.plot(fmax, label="fmax")
-        graph3.plot(fave, label="<f>")
-        graph3.plot(fstd, label="$\sigma_f$")
-        graph3.legend(fancybox=True, shadow=True)
+        graph3.plot(fmax, "r", label="max")
+        graph3.plot(fave, "g", label="ave")
+        graph3.plot(fstd, "c", label="std")
+        graph3.plot(fcstmax, "b--", label="max frozen")
+        #graph3.plot(fcstmin, "b--")
+        graph3.legend(ncol=2, fancybox=True, shadow=True, loc="right",
+        prop={"size": 14})
+        graph3.set_title("Forces on ions")
         if ediffg < 0.:
             graph3.hlines(-ediffg, 0, nionic_steps+1, color="k",
                 linestyle="--")
@@ -1421,26 +1506,9 @@ def get_forces(outfile):
     """ Read and print forces acting on each ion """
 
     # read number of ions
-    if os.path.exists("POSCAR"):
-        struct = mg.Structure.from_file("POSCAR")
-        nat = len(struct)
-        at = [el.symbol for el in struct.species]
-
-        # selective dynamics case
-        poscar = open("POSCAR", "r").readlines()
-        if poscar[7][0].lower() == "s":
-            freeze = list()
-            for iat in xrange(nat):
-                line = [el.upper() for el in poscar[9 + iat].split()[3:6]]
-                if "F" in line:
-                    freeze.append([True] + line)
-                else:
-                    freeze.append([False] + line)
-        else:
-            freeze = [[False, " ", " ", " "] for iat in xrange(nat)]
-
-    else:
-        _die("\nError, I need a POSCAR file", 1)
+    freeze = readSelectiveDynamics("POSCAR")
+    struct = mg.Structure.from_file("POSCAR")
+    nat = len(freeze)
 
     # read EDIFFG
     if os.path.exists("INCAR"):
@@ -1448,20 +1516,20 @@ def get_forces(outfile):
     else:
         _die("\nError, I need an INCAR file", 1)
 
-    # read forces on OUTCAR
-    out = open(outfile, "r")
-    line = out.readline()
-    while line != "":
+    # read last forces on OUTCAR
+    with open(outfile, "r") as out:
         line = out.readline()
+        while line != "":
+            line = out.readline()
 
-        if "TOTAL-FORCE" in line:
-            forces = list()
-            out.readline()
-            for iat in xrange(nat):
-                line = out.readline()
-                fxyz = np.array([float(fx) for fx in line.split()[3:6]])
-                f = np.sqrt((fxyz**2).sum())
-                forces.append(fxyz.tolist() + [f])
+            if "TOTAL-FORCE" in line:
+                forces = list()
+                out.readline()
+                for iat in xrange(nat):
+                    line = out.readline()
+                    fxyz = np.array([float(fx) for fx in line.split()[3:6]])
+                    f = np.sqrt((fxyz**2).sum())
+                    forces.append(fxyz.tolist() + [f])
 
     # output 
     print(72 * "-")
@@ -1473,18 +1541,18 @@ def get_forces(outfile):
         fmt = "%4d %3s  " + 3*"%2s" + 3*"%10.4f" + " %10.3f"
         if freeze[iat][0]:
             print((fmt + "  frozen") % \
-                tuple([iat+1, at[iat]] + freeze[iat][1:] + forces[iat]))
+                tuple([iat+1, struct[iat].specie.symbol] + freeze[iat][1:] + forces[iat]))
         else:
             if ediffg < 0:
                 if forces[iat][-1] < -ediffg:
                     print((fmt + "         cvg") % \
-                       tuple([iat+1, at[iat]] + freeze[iat][1:] + forces[iat]))
+                       tuple([iat+1, struct[iat].specie.symbol] + freeze[iat][1:] + forces[iat]))
                 else:
                     print(fmt % \
-                       tuple([iat+1, at[iat]] + freeze[iat][1:] + forces[iat])) 
+                       tuple([iat+1, struct[iat].specie.symbol] + freeze[iat][1:] + forces[iat])) 
             else:
                 print(fmt % \
-                    tuple([iat+1, at[iat]] + freeze[iat][1:] + forces[iat]))
+                    tuple([iat+1, struct[iat].specie.symbol] + freeze[iat][1:] + forces[iat]))
     print(72 * "-")
 
 # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
