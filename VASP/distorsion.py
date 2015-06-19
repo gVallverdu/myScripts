@@ -181,7 +181,7 @@ def readStructures(sfile, central, ligand, radius=3.):
 def norm(vec, origin):
     """ 
     return the norm considering the vector vec in the parameters' space and
-    the ideal vector origin in the parameters' space.
+    the ideal vector origin in the same parameters' space.
     """
     return np.sqrt(((vec - origin)**2).sum()/(origin**2).sum())
 

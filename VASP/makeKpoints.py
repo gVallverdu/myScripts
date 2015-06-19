@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding=utf-8 -*-
 
+from __future__ import print_function
+
 """
 Create a KPOINTS file for a band structure calculation. This script use
 methods of pymatgen in order to compute and select high symetry lines
@@ -27,7 +29,7 @@ import sys
 import os
 
 import pymatgen as mg
-from pymatgen.symmetry.finder import SymmetryFinder
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.symmetry.bandstructure import HighSymmKpath
 from pymatgen.io.vaspio.vasp_input import Kpoints
 
@@ -44,36 +46,42 @@ if len(sys.argv) > 1:
     if "-d" in sys.argv:
         try:
             ndiv = int(sys.argv[sys.argv.index("-d") + 1])
-        except ValueError, IndexError:
+        except (ValueError, IndexError):
             print("-d must be followed by an integer")
             exit(1)
 
 # read structure
 if os.path.exists(fstruct):
-    struct = mg.read_structure(fstruct)
+    struct = mg.Structure.from_file(fstruct)
 else:
     print("File %s does not exist" % fstruct)
     exit(1)
 
 # symmetry information
-struct_sym = SymmetryFinder(struct)
+struct_sym = SpacegroupAnalyzer(struct)
+print("\nLattice details:")
+print("----------------")
 print("lattice type : {0}".format(struct_sym.get_lattice_type()))
 print("space group  : {0} ({1})".format(struct_sym.get_spacegroup_symbol(),
-                                     struct_sym.get_spacegroup_number()))
+                                        struct_sym.get_spacegroup_number()))
 
 # Compute first brillouin zone
 ibz = HighSymmKpath(struct)
-ibz.get_kpath_plot(savefig="path.png")
 print("ibz type     : {0}".format(ibz.name))
+ibz.get_kpath_plot(savefig="path.png")
 
 # print specific kpoints in the first brillouin zone
+print("\nList of high symmetry k-points:")
+print("-------------------------------")
 for key, val in ibz.kpath["kpoints"].items():
     print("%8s %s" % (key, str(val)))
  
 # suggested path for the band structure
-print("paths in first brillouin zone :")
-for path in ibz.kpath["path"]:
-    print(path)
+print("\nSuggested paths in first brillouin zone:")
+print("----------------------------------------")
+for i, path in enumerate(ibz.kpath["path"]):
+    print("   %2d:" % (i+1), " -> ".join(path))
 
 # write the KPOINTS file
+print("\nWrite file KPOINTS")
 Kpoints.automatic_linemode(ndiv, ibz).write_file("KPOINTS")
