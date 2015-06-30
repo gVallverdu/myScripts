@@ -24,9 +24,10 @@ SUB-COMMANDS
         clean
             delete vasp output files in the current directory.
 
-        restart
+        restart [dirname]
             copy necessary files for a restart calculation into a restart
-            directory. None of the copied files are modified.
+            directory named [dirname]. None of the copied files are modified.
+            By default, the dirname is 'restart'.
 
         lr
             copy and save necessary files for restarting the calculation in the
@@ -267,7 +268,11 @@ def select():
     elif opt == "spb":
         makeSPBader()
     elif opt == "restart":
-        makeRestart("restart")
+        if len(sys.argv) == 3:
+            dirname = sys.argv[2]
+        else:
+            dirname = "restart"
+        makeRestart(dirname)
     elif opt == "lr":
         makeLocalRestart()
     elif opt == "purge":
@@ -513,7 +518,7 @@ def makeLocalRestart():
     print("cp CONTCAR -> POSCAR")
     shutil.copy(os.path.join(wd, "CONTCAR"), os.path.join(wd ,"POSCAR"))
 
-def makeRestart(dirname):
+def makeRestart(dirname="restart"):
     """ copy necessary files for restarting a vasp calculation """
 
     print("# copying input files")
@@ -566,7 +571,7 @@ def makeRestart(dirname):
     else:
         Colors.cprint("y", "I did not find a job file, copy it by yourself")
 
-def makeSP():
+def makeSP(dirname="SinglePoint"):
     """ copy necessary files for a single point energy calculation into a
     directory called SinglePoint. The new INCAR file is modified in the
     following way:
@@ -580,7 +585,6 @@ def makeSP():
     """
 
     wd = os.getcwd()
-    dirname = "SinglePoint"
     spdir = os.path.join(wd, dirname)
 
     # copy files
@@ -619,7 +623,7 @@ def makeSP():
     # write new INCAR
     open(os.path.join(spdir, "INCAR"), "w").writelines(incar)
 
-def makeSPBader():
+def makeSPBader(dirname = "SinglePoint"):
     """ copy necessary files for a single point energy calculation into a
     directory called SinglePoint and add specific key words necessary for a
     bader charges calculation. The new INCAR file is modified in the
@@ -635,11 +639,10 @@ def makeSPBader():
     """
 
     wd = os.getcwd()
-    dirname = "SinglePoint"
     spdir = os.path.join(wd, dirname)
 
     # set up singlePoint calculation
-    makeSP()
+    makeSP(dirname)
 
     # read INCAR and delete or change lines
     print("\n# Adding bader keywords")
