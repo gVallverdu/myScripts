@@ -15,3 +15,7 @@ supFile.py
 bigfiles.py
     Pyhton script which look for bigest files in a directory and
     subdirectories.
+
+zipFile.py
+    Python script which look for specific files which correpond to a mask and zip them.
+
