@@ -9,8 +9,9 @@ SYNTAX
     supFile [OPTIONS] 
 
 DESCRIPTION
-    Print all file corresponding to the argument list and ask for deletion. The script
-    start from the current workind directory and look for all files in all subdirectories.
+    Print all files corresponding to the argument list and ask for deletion.
+    The script start from the current workind directory and look for all files
+    in all subdirectories.
         
     -h, --help
         print this help

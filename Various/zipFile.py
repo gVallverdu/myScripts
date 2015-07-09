@@ -2,21 +2,23 @@
 # -*- coding=utf-8 -*-
 
 """
-supFile
+zipFile
 -------
 
 SYNTAX
-    supFile [OPTIONS] 
+    zipFile [OPTIONS] 
 
 DESCRIPTION
-    Print all file corresponding to the argument list and ask for deletion. The script
-    start from the current workind directory and look for all files in all subdirectories.
+    Print all files corresponding to the argument list and ask before
+    compression. The script start from the current workind directory and look
+    for all files in all subdirectories. Default compression command is gzip.
         
     -h, --help
-        print this help
+        print this help and exit
 
     -zipcmd [cmd]
         select the command for compression. For example : gzip, bzip2
+        This can be used to uncompress a list of files.
 
 EXAMPLES
         zipFile CHG* WAVECAR
@@ -26,7 +28,7 @@ EXAMPLES
 
 __licence__ = "GPL"
 __author__ = "Germain Vallverdu <germain.vallverdu@univ-pau.fr>"
-__date__ = "12 Novembre 2013"
+__date__ = "09 juillet 2015"
 
 import doctest
 import os
@@ -118,8 +120,9 @@ def zipFile(filenames, zipcmd="gzip"):
         else:
             print(" hit 'y' for yes or 'n' for non")
     for f in sorted_fichier:
-        print(zipcmd + " " + os.path.join(f["dossier"], f["nom"]))
-        os.remove(os.path.join(f["dossier"], f["nom"]))
+        run = zipcmd + " " + os.path.join(f["dossier"], f["nom"])
+        print(run)
+        os.system(run)
     
 if __name__ == "__main__":
     doctest.testmod()
@@ -131,10 +134,17 @@ if __name__ == "__main__":
             exit(0)
 
         if "--zipcmd" in sys.argv:
-            pos = sys.argv.index("--zipcmd")
-            sys.argv.pop(pos)
-            zipcmd = sys.argv[pos]
-            sys.argv.pop(pos)
+            try:
+                pos = sys.argv.index("--zipcmd")
+                sys.argv.pop(pos)
+                zipcmd = sys.argv[pos]
+                sys.argv.pop(pos)
+            except:
+                print("\n !# ERROR #! reading options")
+                print(__doc__)
+                exit(1)
+        else:
+            zipcmd = "gzip"
 
         filenames = sys.argv[1:]
     else:
