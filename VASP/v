@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding=utf-8 -*-
 
 """
@@ -7,14 +7,14 @@ Manage VASP job operation and extract interesting data.
 This script does not run the calculation. You have to check the input files
 before !!
 
-SYNTAX 
+SYNTAX
         v <sub-command> [OPTIONS]
 
 SUB-COMMANDS
 
     get help
     --------
- 
+
         -h, --hep, h, help
             print this help and exit.
 
@@ -35,8 +35,8 @@ SUB-COMMANDS
             are saved.
 
         sp
-            copy the necessary files for an energy calculation into a 
-            SinglePoint directory. In the new INCAR file, the following 
+            copy the necessary files for an energy calculation into a
+            SinglePoint directory. In the new INCAR file, the following
             keywords are changed:
                 * NSW    -> NSW = 0
                 * ISMEAR -> ISMEAR = -5
@@ -88,13 +88,13 @@ SUB-COMMANDS
         tdos ['FILENAME', tofile]
             read DOS from 'vasprun.xml' or from 'FILENAME' and plot it using
             matplotlib (need pymatgen). 'FILENAME' must be a valid vasprun.xml
-            file. 
+            file.
             If tofile is present, the total DOS is printed into a file named
             'total_DOS.dat'.
 
         pdos ['FILENAME', tofile]
             read projected DOS from 'vasprun.xml' or from 'FILENAME' and plot
-            it using matplotlib (need pymatgen). 'FILENAME' must be a valid 
+            it using matplotlib (need pymatgen). 'FILENAME' must be a valid
             vasprun.xml file.
             If tofile is present, for each element, projected DOS are printed
             into a file named 'DOS_X.dat' where X is the symbol of the
@@ -107,12 +107,12 @@ SUB-COMMANDS
 
         mag [full, threshold]
             read OUTCAR and POSCAR file and print magnetization of each atom at
-            the last ionic step. 
+            the last ionic step.
             If 'full' is present, magnetization are plotted and printed into a
             file for all ionic step but only for atoms whit a magnetic moment
             higher than the treshold.o
 
-            Examples: 
+            Examples:
                 v mag
                 v full
                 v full .2
@@ -154,7 +154,7 @@ SUB-COMMANDS
         neighbors iat radius [FILE]
             Print the neighbor list of atom [iat] in a sphere of radius
             [radius]. The structure is read on [FILE] (defautl value is
-            'POSCAR'). The radius is in angstrom. 
+            'POSCAR'). The radius is in angstrom.
 
             Example:
                 v neighbors 2 3.5
@@ -167,7 +167,7 @@ REMARK
         Job files are supposed to begin by 'j' or to have  a '.job' extension.
 
         Some functions may need pymatgen module (see http://www.pymatgen.org).
-        
+
 """
 
 from __future__ import division, print_function
@@ -186,8 +186,8 @@ except ImportError:
 
 try:
     import pymatgen as mg
-    from pymatgen.io.vaspio.vasp_input import Incar, Potcar, Poscar
-    from pymatgen.io.vaspio.vasp_output import Outcar, Vasprun, Oszicar, Chgcar
+    from pymatgen.io.vasp.inputs import Incar, Potcar, Poscar
+    from pymatgen.io.vasp.outputs import Outcar, Vasprun, Oszicar, Chgcar
     from pymatgen.electronic_structure.core import Spin
 except ImportError:
     print("\033[93m\n ## Pymatgen may be not available ##\n\033[0m")
@@ -199,14 +199,16 @@ __date__ = "June 2014"
 
 dashedLine = "".join(50 * ["-"])
 
-# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 # General functions
-# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
 
 def _die(m="", code=0):
     """ print error and exit """
     Colors.cprint("r", m)
     exit(code)
+
 
 def question(message):
     """ ask a question and read answer """
@@ -221,9 +223,10 @@ def question(message):
             print("hit 'y' for yes or 'n' for no")
     return answer
 
-# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 # Check and select functions
-# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
 
 def check():
     """ check options """
@@ -248,6 +251,7 @@ def check():
     if opt not in options:
         _die("\nERROR, option '%s' unknown" % opt, 1)
 
+
 def select():
     """ select the operation to do """
 
@@ -258,7 +262,7 @@ def select():
         if opt in ["h", "help", "-h", "--help"]:
             _die(__doc__)
 
-    # command name 
+    # command name
     opt = sys.argv[1].lower()
 
     if opt == "clean":
@@ -283,7 +287,7 @@ def select():
         narg = len(sys.argv)
         if narg == 2:
             print(wd + ":")
-            posfile  = fnmatch.filter(os.listdir(wd), "POSCAR*")
+            posfile = fnmatch.filter(os.listdir(wd), "POSCAR*")
             posfile += fnmatch.filter(os.listdir(wd), "CONTCAR*")
             posfile += fnmatch.filter(os.listdir(wd), "*.vasp")
             for i, f in enumerate(posfile):
@@ -296,7 +300,7 @@ def select():
         else:
             _die("Error, bad arguments.", 1)
 
-        cell(poscar) 
+        cell(poscar)
 
     elif opt == "cl":
         coreLevel()
@@ -382,7 +386,7 @@ def select():
                 th = .2
             finally:
                 print("th = ", th)
-                
+
         get_mag(full, th)
 
     elif opt == "charges":
@@ -478,9 +482,10 @@ def select():
     if opt in ["sp", "spb", "restart", "lr"]:
         Colors.cprint("y", "\nCAREFULLY look at the input files before running the calculation")
 
-# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 # Manage calculations
-# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
 
 def makeLocalRestart():
     """ save useful files for restarting a vasp calculation """
@@ -489,8 +494,8 @@ def makeLocalRestart():
         """ backup a file """
         fbase = os.path.splitext(f)[0]
         print("cp %11s -> %s_%d%s" % (f, fbase, n + 1, ext))
-        shutil.copy(os.path.join(wd, "%s" % f), 
-                    os.path.join(wd ,"%s_%d%s" % (fbase, n + 1, ext)))
+        shutil.copy(os.path.join(wd, "%s" % f),
+                    os.path.join(wd, "%s_%d%s" % (fbase, n + 1, ext)))
 
     wd = os.getcwd()
 
@@ -516,7 +521,8 @@ def makeLocalRestart():
     # copy CONTCAR -> POSCAR
     print("\nset up the new calculation")
     print("cp CONTCAR -> POSCAR")
-    shutil.copy(os.path.join(wd, "CONTCAR"), os.path.join(wd ,"POSCAR"))
+    shutil.copy(os.path.join(wd, "CONTCAR"), os.path.join(wd, "POSCAR"))
+
 
 def makeRestart(dirname="restart"):
     """ copy necessary files for restarting a vasp calculation """
@@ -531,7 +537,7 @@ def makeRestart(dirname="restart"):
             _die()
     else:
         os.mkdir(ndir)
-        
+
     # copy input files
     for f in ["INCAR", "POTCAR", "KPOINTS"]:
         if os.path.exists(os.path.join(wd, f)):
@@ -554,7 +560,7 @@ def makeRestart(dirname="restart"):
             shutil.copy(os.path.join(wd, f), ndir)
 
     # job file
-    jobs  = fnmatch.filter(os.listdir(wd), "j*")
+    jobs = fnmatch.filter(os.listdir(wd), "j*")
     jobs += fnmatch.filter(os.listdir(wd), "*.job")
     jobs = [job for job in jobs if not fnmatch.fnmatchcase(job, "*.o*")]
     if len(jobs) == 1:
@@ -570,6 +576,7 @@ def makeRestart(dirname="restart"):
             shutil.copy(os.path.join(wd, job), ndir)
     else:
         Colors.cprint("y", "I did not find a job file, copy it by yourself")
+
 
 def makeSP(dirname="SinglePoint"):
     """ copy necessary files for a single point energy calculation into a
@@ -623,7 +630,8 @@ def makeSP(dirname="SinglePoint"):
     # write new INCAR
     open(os.path.join(spdir, "INCAR"), "w").writelines(incar)
 
-def makeSPBader(dirname = "SinglePoint"):
+
+def makeSPBader(dirname="SinglePoint"):
     """ copy necessary files for a single point energy calculation into a
     directory called SinglePoint and add specific key words necessary for a
     bader charges calculation. The new INCAR file is modified in the
@@ -670,9 +678,9 @@ def makeSPBader(dirname = "SinglePoint"):
     # read CONTCAR file
     poscar = open(os.path.join(spdir, "POSCAR"), "r").readlines()
     scale = float(poscar[1])
-    veca  = [scale * float(x) for x in poscar[2].split()[0:3]]
-    vecb  = [scale * float(x) for x in poscar[3].split()[0:3]]
-    vecc  = [scale * float(x) for x in poscar[4].split()[0:3]]
+    veca = [scale * float(x) for x in poscar[2].split()[0:3]]
+    vecb = [scale * float(x) for x in poscar[3].split()[0:3]]
+    vecc = [scale * float(x) for x in poscar[4].split()[0:3]]
     a = sqrt(veca[0]**2 + veca[1]**2 + veca[2]**2)
     b = sqrt(vecb[0]**2 + vecb[1]**2 + vecb[2]**2)
     c = sqrt(vecc[0]**2 + vecc[1]**2 + vecc[2]**2)
@@ -703,6 +711,7 @@ def makeSPBader(dirname = "SinglePoint"):
     # write new INCAR
     open(os.path.join(spdir, "INCAR"), "w").writelines(incar)
 
+
 def cleanVasp():
     """ delete vasp output files """
     wd = os.getcwd()
@@ -716,9 +725,9 @@ def cleanVasp():
 
 
 def purgeRuns():
-    """ 
+    """
     delete WAVECAR, CHGCAR, CHG, AECCAR* in current directory and all
-    subdirectories 
+    subdirectories
     """
 
     filenames = ["WAVECAR", "CHG", "CHGCAR*", "AECCAR*"]
@@ -747,14 +756,14 @@ def purgeRuns():
     print(dashedLine)
 
 
-# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 # extract data
-# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
 def cell(poscar="CONTCAR"):
-    """ 
-    Compute and print lattice parameters 
-    
+    """
+    Compute and print lattice parameters
+
     Args:
         poscar(string): file name
     """
@@ -767,9 +776,9 @@ def cell(poscar="CONTCAR"):
     lines = open(poscar, "r").readlines()
     title = lines[0][0:-1]
     scale = float(lines[1])
-    veca  = [scale * float(v) for v in lines[2].split()[0:3]]
-    vecb  = [scale * float(v) for v in lines[3].split()[0:3]]
-    vecc  = [scale * float(v) for v in lines[4].split()[0:3]]
+    veca = [scale * float(v) for v in lines[2].split()[0:3]]
+    vecb = [scale * float(v) for v in lines[3].split()[0:3]]
+    vecc = [scale * float(v) for v in lines[4].split()[0:3]]
 
     # lattice parameters
     a = sqrt(veca[0]**2 + veca[1]**2 + veca[2]**2)
@@ -812,6 +821,7 @@ def cell(poscar="CONTCAR"):
     print("gamma = %10.3f" % gamma)
     print(dashedLine)
 
+
 def coreLevel():
     """ extract core level """
 
@@ -851,12 +861,12 @@ def coreLevel():
         ao = sys.argv[3]
 
     # print core state energy
-    if cl[iat-1].has_key(ao):
-        print("atom %d -> %2s_%2s = %f eV" % (iat, symbol[iat-1], ao, \
-            cl[iat-1][ao][-1]))
+    if cl[iat - 1].has_key(ao):
+        print("atom %d -> %2s_%2s = %f eV" % (iat, symbol[iat - 1], ao,
+                                              cl[iat - 1][ao][-1]))
     else:
         _die("Atom index and AO unconsistent.\
-            \n    atom: %s %d\n    AO  : %s" % (symbol[iat-1], iat, ao), 1)
+            \n    atom: %s %d\n    AO  : %s" % (symbol[iat - 1], iat, ao), 1)
 
 
 def plot_total_dos(xmlfile="vasprun.xml", tofile=False):
@@ -865,7 +875,6 @@ def plot_total_dos(xmlfile="vasprun.xml", tofile=False):
     # check xml file
     if not os.path.exists(xmlfile):
         _die("File %s does not exist" % xmlfile, 1)
-
 
     # read
     run = Vasprun(xmlfile, parse_eigen=False)
@@ -878,9 +887,9 @@ def plot_total_dos(xmlfile="vasprun.xml", tofile=False):
                 lines += "%12.7f %12.7f\n" % (e - run.efermi, tdos)
         else:
             lines = "#  E - Ef        Spin up      Spin down\n"
-            for e, up, down in zip(run.tdos.energies, \
-                    run.tdos.densities[Spin.up], \
-                    run.tdos.densities[Spin.down]):
+            for e, up, down in zip(run.tdos.energies,
+                                   run.tdos.densities[Spin.up],
+                                   run.tdos.densities[Spin.down]):
                 lines += "%12.7f %12.7f %12.7f\n" % (e - run.efermi, up, -down)
         open("total_DOS.dat", "w").write(lines)
 
@@ -888,17 +897,17 @@ def plot_total_dos(xmlfile="vasprun.xml", tofile=False):
         # plot
         font = {'family': 'serif', 'size': 20}
         plt.rc('font', **font)
-        plt.figure(figsize=(11.69, 8.27)) # A4
+        plt.figure(figsize=(11.69, 8.27))  # A4
 
         plt.plot(run.tdos.energies - run.efermi, run.tdos.densities[Spin.up],
-            "r-", label="Spin up")
+                 "r-", label="Spin up")
         if run.is_spin:
-            plt.plot(run.tdos.energies - run.efermi, -run.tdos.densities[Spin.down], 
-                "b-", label="Spin down")
+            plt.plot(run.tdos.energies - run.efermi, -run.tdos.densities[Spin.down],
+                     "b-", label="Spin down")
 
         # set up figure
-        plt.title("Density of states of " + \
-            run.initial_structure.composition.reduced_formula)
+        plt.title("Density of states of " +
+                  run.initial_structure.composition.reduced_formula)
         plt.xlabel(r"$E - E_{f}$   /   eV")
         plt.ylabel("Density of states")
         plt.grid()
@@ -907,12 +916,13 @@ def plot_total_dos(xmlfile="vasprun.xml", tofile=False):
         if run.is_spin:
             xmin, xmax = plt.xlim()
             plt.hlines(0, xmin, xmax, color="k", lw=1)
-            plt.legend(prop={"size":18})
+            plt.legend(prop={"size": 18})
         else:
             ymin, ymax = plt.ylim()
             plt.ylim(0, ymax)
 
         plt.show()
+
 
 def plot_proj_dos(xmlfile="vasprun.xml", tofile=False):
     """ Plot projected DOS using matplotlib """
@@ -939,10 +949,10 @@ def plot_proj_dos(xmlfile="vasprun.xml", tofile=False):
                 lines += "# column 5: DOS projected on AO type d\n"
                 for i in xrange(len(dos.energies)):
                     lines += "%12.7f " % (dos.energies[i] - dos.efermi)
-                    lines += "%12.7f " %  tdos.densities[Spin.up][i]
-                    lines += "%12.7f " %  el_dos["S"].densities[Spin.up][i]
-                    lines += "%12.7f " %  el_dos["P"].densities[Spin.up][i]
-                    lines += "%12.7f " %  el_dos["D"].densities[Spin.up][i]
+                    lines += "%12.7f " % tdos.densities[Spin.up][i]
+                    lines += "%12.7f " % el_dos["S"].densities[Spin.up][i]
+                    lines += "%12.7f " % el_dos["P"].densities[Spin.up][i]
+                    lines += "%12.7f " % el_dos["D"].densities[Spin.up][i]
                     lines += "\n"
 
             else:
@@ -956,13 +966,13 @@ def plot_proj_dos(xmlfile="vasprun.xml", tofile=False):
                 lines += "# column 9: DOS down projected on AO type d\n"
                 for i in xrange(len(dos.energies)):
                     lines += "%12.7f " % (dos.energies[i] - dos.efermi)
-                    lines += "%12.7f " %  tdos.densities[Spin.up][i]
+                    lines += "%12.7f " % tdos.densities[Spin.up][i]
                     lines += "%12.7f " % -tdos.densities[Spin.down][i]
-                    lines += "%12.7f " %  el_dos["S"].densities[Spin.up][i]
+                    lines += "%12.7f " % el_dos["S"].densities[Spin.up][i]
                     lines += "%12.7f " % -el_dos["S"].densities[Spin.down][i]
-                    lines += "%12.7f " %  el_dos["P"].densities[Spin.up][i]
+                    lines += "%12.7f " % el_dos["P"].densities[Spin.up][i]
                     lines += "%12.7f " % -el_dos["P"].densities[Spin.down][i]
-                    lines += "%12.7f " %  el_dos["D"].densities[Spin.up][i]
+                    lines += "%12.7f " % el_dos["D"].densities[Spin.up][i]
                     lines += "%12.7f " % -el_dos["D"].densities[Spin.down][i]
                     lines += "\n"
 
@@ -972,25 +982,25 @@ def plot_proj_dos(xmlfile="vasprun.xml", tofile=False):
         # plot
         font = {'family': 'serif', 'size': 20}
         plt.rc('font', **font)
-        plt.figure(figsize=(11.69, 8.27)) # A4
+        plt.figure(figsize=(11.69, 8.27))  # A4
 
         colors = {"S": "r-", "P": "g-", "D": "b-"}
         nplots = len(dos.structure.composition.elements)
         for i, el in enumerate(dos.structure.composition.elements):
             el_dos = dos.get_element_spd_dos(el)
-            plt.subplot(nplots,1,i+1)
-            plt.plot(dos.energies - dos.efermi, dos.densities[Spin.up], "k-", 
-                label="total")
+            plt.subplot(nplots, 1, i + 1)
+            plt.plot(dos.energies - dos.efermi, dos.densities[Spin.up], "k-",
+                     label="total")
             for orb, pdos in el_dos.items():
                 plt.plot(dos.energies - dos.efermi, pdos.densities[Spin.up], colors[orb],
-                    label=orb.lower())
+                         label=orb.lower())
 
             if run.is_spin:
                 plt.plot(dos.energies - dos.efermi, -dos.densities[Spin.down],
-                    "k-")
+                         "k-")
                 for orb, pdos in el_dos.items():
                     plt.plot(dos.energies - dos.efermi, -pdos.densities[Spin.down],
-                        colors[orb])
+                             colors[orb])
                 xmin, xmax = plt.xlim()
                 plt.hlines(0, xmin, xmax, color="k")
 
@@ -1000,20 +1010,21 @@ def plot_proj_dos(xmlfile="vasprun.xml", tofile=False):
             plt.ylabel("Element : " + el.symbol)
             plt.grid()
             plt.legend(prop={"size": "18"})
-        
-        #plt.subplots_adjust(hspace=0.)
-        plt.suptitle("Projected DOS of elements of " + \
-            run.initial_structure.composition.reduced_formula)
+
+        # plt.subplots_adjust(hspace=0.)
+        plt.suptitle("Projected DOS of elements of " +
+                     run.initial_structure.composition.reduced_formula)
         plt.xlabel(r"$E - E_{f}$   /   eV")
 
         plt.show()
 
+
 def plot_at_dos(iat, xmlfile="vasprun.xml"):
-    """ Print DOS projected on atom iat 
+    """ Print DOS projected on atom iat
 
         args:
             iat (int): index of the atom from 1 to # of atom
-    
+
     """
 
     # check xml file
@@ -1023,7 +1034,7 @@ def plot_at_dos(iat, xmlfile="vasprun.xml"):
     # read
     run = Vasprun(xmlfile, parse_eigen=False)
     dos = run.complete_dos
-    site = run.initial_structure[iat-1]
+    site = run.initial_structure[iat - 1]
     spd_dos = dos.get_site_spd_dos(site)
     sitedos = dos.get_site_dos(site)
     print("gap = %12.6f" % dos.get_gap())
@@ -1036,7 +1047,7 @@ def plot_at_dos(iat, xmlfile="vasprun.xml"):
         # header
         nc += 1
         lines += "# column %2d: DOS projected on %s_%d\n" % (nc,
-            site.specie.symbol, iat)
+                                                             site.specie.symbol, iat)
         for orb in ["s", "p", "d"]:
             nc += 1
             lines += "# column %2d: DOS projected on all %s AO\n" % (nc, orb)
@@ -1047,7 +1058,7 @@ def plot_at_dos(iat, xmlfile="vasprun.xml"):
         # data
         for i in xrange(len(dos.energies)):
             lines += "%12.7f " % (dos.energies[i] - dos.efermi)
-            lines += "%12.7f " %  sitedos.densities[Spin.up][i]
+            lines += "%12.7f " % sitedos.densities[Spin.up][i]
             for orb in ["S", "P", "D"]:
                 lines += "%12.7f" % spd_dos[orb].densities[Spin.up][i]
             for pdos in dos.pdos[site].values():
@@ -1058,10 +1069,10 @@ def plot_at_dos(iat, xmlfile="vasprun.xml"):
         # header
         nc += 1
         lines += "# column %2d: DOS up projected on %s_%d\n" % (nc,
-            site.specie.symbol, iat)
+                                                                site.specie.symbol, iat)
         nc += 1
         lines += "# column %2d: DOS down projected on %s_%d\n" % (nc,
-            site.specie.symbol, iat)
+                                                                  site.specie.symbol, iat)
         for orb in ["s", "p", "d"]:
             nc += 1
             lines += "# column %2d: DOS up projected on all %s AO\n" % (nc, orb)
@@ -1076,8 +1087,8 @@ def plot_at_dos(iat, xmlfile="vasprun.xml"):
         # data
         for i in xrange(len(dos.energies)):
             lines += "%12.7f " % (dos.energies[i] - dos.efermi)
-            lines += "%12.7f " %  sitedos.densities[Spin.up][i]
-            lines += "%12.7f " %  sitedos.densities[Spin.down][i]
+            lines += "%12.7f " % sitedos.densities[Spin.up][i]
+            lines += "%12.7f " % sitedos.densities[Spin.down][i]
             for orb in ["S", "P", "D"]:
                 lines += "%12.7f" % spd_dos[orb].densities[Spin.up][i]
                 lines += "%12.7f" % spd_dos[orb].densities[Spin.down][i]
@@ -1087,6 +1098,7 @@ def plot_at_dos(iat, xmlfile="vasprun.xml"):
             lines += "\n"
 
     open("DOS_%s%d.dat" % (site.specie.symbol, iat), "w").write(lines)
+
 
 def get_mag(full=False, plotThreshold=.1):
     """ Read OUTCAR and POSCAR file and print magnetization """
@@ -1116,7 +1128,7 @@ def get_mag(full=False, plotThreshold=.1):
             line += "%8.3f" % val
         print(line)
     print("# ---------------------------------------")
-    
+
     # ionic optimization case, follow magnetization
     if full:
         # read all magnetization
@@ -1124,8 +1136,8 @@ def get_mag(full=False, plotThreshold=.1):
             outcar = f.readlines()
 
         # locate magnetization data
-        positions = [i for i, line in enumerate(outcar) 
-                         if "magnetization (x)" in line]
+        positions = [i for i, line in enumerate(outcar)
+                     if "magnetization (x)" in line]
 
         # delete the last position (duplicate)
         positions.pop(-1)
@@ -1144,13 +1156,13 @@ def get_mag(full=False, plotThreshold=.1):
 
         # do not plot moments if magnetization < plotThreshold
         Natoms = len(p.structure)
-        plotList = np.where(np.max(np.fabs(moments), axis=0) > plotThreshold, 
+        plotList = np.where(np.max(np.fabs(moments), axis=0) > plotThreshold,
                             Natoms * [True], Natoms * [False])
-        
+
         # plot
         font = {'family': 'sans', 'size': 18}
         plt.rc('font', **font)
-        plt.figure(figsize=(11.69, 8.27)) # A4
+        plt.figure(figsize=(11.69, 8.27))  # A4
         ax = plt.subplot(111)
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * .9, box.height])
@@ -1179,6 +1191,7 @@ def get_mag(full=False, plotThreshold=.1):
                 line = "%4d" % i
                 line += "".join(["%8.3f" % moment[iat] for iat in range(Natoms) if plotList[iat]])
                 f.write(line + "\n")
+
 
 def charges(filename=None):
     """
@@ -1227,7 +1240,7 @@ def charges(filename=None):
     nelect = 0
     for singlePotcar in potcar:
         lines += "%3s (x%d)    POTCAR : %6s     zval : %5.1f\n" % \
-                 (singlePotcar.element, compo[singlePotcar.element], \
+                 (singlePotcar.element, compo[singlePotcar.element],
                   singlePotcar.symbol, singlePotcar.zval)
         valence[singlePotcar.element] = singlePotcar.zval
         nelect += singlePotcar.zval * compo[singlePotcar.element]
@@ -1252,8 +1265,8 @@ def charges(filename=None):
     lines += "------------------------------------\n"
     for iat in range(nat):
         charge = valence[atomNames[iat]] - population[iat]
-        lines += "%4d %4s %4d %10.4f %10.4f\n" % (iat + 1, atomNames[iat], \
-                valence[atomNames[iat]], population[iat], charge)
+        lines += "%4d %4s %4d %10.4f %10.4f\n" % (iat + 1, atomNames[iat],
+                                                  valence[atomNames[iat]], population[iat], charge)
     lines += "------------------------------------\n"
 
     #
@@ -1279,7 +1292,7 @@ def charges(filename=None):
         nel = struct.composition[el.symbol]
         name = el.symbol
         avePop[name] /= nel
-        charge  = valence[name] - avePop[name]
+        charge = valence[name] - avePop[name]
 
         av2Charge[name] /= nel
         if fabs(av2Charge[name] - charge**2) < 1e-5:
@@ -1287,8 +1300,8 @@ def charges(filename=None):
         else:
             av2Charge[name] = sqrt(av2Charge[name] - charge**2)
 
-        lines += "%4s %4d %10.4f +/- %7.4f\n" % (name, valence[name], charge,\
-                av2Charge[name])
+        lines += "%4s %4d %10.4f +/- %7.4f\n" % (name, valence[name], charge,
+                                                 av2Charge[name])
     lines += "------------------------------------\n"
 
     if not filename:
@@ -1297,13 +1310,14 @@ def charges(filename=None):
         with open(filename, "w") as fout:
             fout.write(lines)
 
+
 def readSelectiveDynamics(f="POSCAR"):
-    """ 
+    """
     Read slective dynamics info on a POSCAR file and return a boolean and the
     constraints.
         * freeze is True if there is one 'F' for the considered atom
         * freeze is False if the three flags are 'T' for the considered atom'
-    
+
     Returns:
         freeze (list): list of [bool, "F/T", "F/T", "F/T"]
     """
@@ -1336,6 +1350,7 @@ def readSelectiveDynamics(f="POSCAR"):
 
     return freeze
 
+
 def showcvg(xmlfile="vasprun.xml"):
     """ Output graphs for looking at convergence of the calculation """
 
@@ -1361,7 +1376,7 @@ def showcvg(xmlfile="vasprun.xml"):
 
         font = {'family': 'serif', 'size': 18}
         plt.rc('font', **font)
-        plt.figure(figsize=(11.69, 8.27)) # A4
+        plt.figure(figsize=(11.69, 8.27))  # A4
         plt.plot(energy)
         plt.title("SCF convergence")
         plt.xlabel("Electronic step")
@@ -1392,8 +1407,8 @@ def showcvg(xmlfile="vasprun.xml"):
                 if "TOTAL-FORCE" in line:
                     out.readline()
                     forces = np.array(
-                        [[float(fx) for fx in out.readline().split()[4:7]] 
-                                    for iat in xrange(nions)])
+                        [[float(fx) for fx in out.readline().split()[4:7]]
+                         for iat in xrange(nions)])
                     forces = np.sqrt((forces**2).sum(axis=1))
                     valmax = -1
                     ave = 0.
@@ -1433,12 +1448,12 @@ def showcvg(xmlfile="vasprun.xml"):
                     fcstmin.append(cstmin)
 
         delta_F = list()
-        for i in range(nionic_steps-1):
-            delta_F.append(fabs(e_fr_energy[i+1] - e_fr_energy[i]))
+        for i in range(nionic_steps - 1):
+            delta_F.append(fabs(e_fr_energy[i + 1] - e_fr_energy[i]))
 
         font = {'family': 'sans', 'size': 18}
         plt.rc('font', **font)
-        fig = plt.figure(figsize=(11.69, 8.27)) # A4
+        fig = plt.figure(figsize=(11.69, 8.27))  # A4
         fig.subplots_adjust(wspace=0.25)
         fig.suptitle("VASP convergence", fontsize=24)
 
@@ -1456,9 +1471,9 @@ def showcvg(xmlfile="vasprun.xml"):
         graph2.set_xlabel("ionic step")
         graph2.grid()
         graph2.plot(delta_F, "r")
-        if ediffg > 0. :
-            graph2.hlines(ediffg, 0, nionic_steps+1, color="k",
-                linestyle="--")
+        if ediffg > 0.:
+            graph2.hlines(ediffg, 0, nionic_steps + 1, color="k",
+                          linestyle="--")
         graph2.set_xlim(0, nionic_steps + 1)
 
         # graph3 = forces acting on ions
@@ -1473,15 +1488,16 @@ def showcvg(xmlfile="vasprun.xml"):
             graph3.plot(fcstmax, "b--", label="max frozen")
             #graph3.plot(fcstmin, "b--")
         graph3.legend(ncol=2, fancybox=True, shadow=True, loc="upper right",
-        prop={"size": 14})
+                      prop={"size": 14})
         graph3.set_title("Forces on ions")
         if ediffg < 0.:
-            graph3.hlines(-ediffg, 0, nionic_steps+1, color="k",
-                linestyle="--")
+            graph3.hlines(-ediffg, 0, nionic_steps + 1, color="k",
+                          linestyle="--")
         graph3.set_xlim(0, nionic_steps + 1)
 
     # plot data
     plt.show()
+
 
 def get_forces(outfile):
     """ Read and print forces acting on each ion """
@@ -1512,15 +1528,15 @@ def get_forces(outfile):
                     f = np.sqrt((fxyz**2).sum())
                     forces.append(fxyz.tolist() + [f])
 
-    # output 
+    # output
     print(72 * "-")
     print("                      TOTAL FORCES ON ATOMS ")
     print(72 * "-")
     print(" iat at   freeze     fx        fy        fz          f            cvg")
     print(72 * "-")
     for iat in xrange(nat):
-        m = ("%4d %3s  " + 3*"%2s" + 3*"%10.4f" + " %10.3f") % \
-            tuple([iat+1, struct[iat].specie.symbol] + freeze[iat][1:] + forces[iat])
+        m = ("%4d %3s  " + 3 * "%2s" + 3 * "%10.4f" + " %10.3f") % \
+            tuple([iat + 1, struct[iat].specie.symbol] + freeze[iat][1:] + forces[iat])
         if freeze[iat][0]:
             Colors.cprint("b", m + "  frozen")
         else:
@@ -1531,9 +1547,10 @@ def get_forces(outfile):
                     Colors.cprint("r", m)
     print(72 * "-")
 
-# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 # compute things
-# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
 
 def chgsum():
     """ linear add of CHGCAR files """
@@ -1555,10 +1572,10 @@ def chgsum():
     else:
         _die("Error in arguemnts list. try {0} -h to get some \
             help".format(sys.argv[0]), 1)
-        
+
     # ask if you agree the computation
-    print("I will compute : {0} + {1}*{2}".format(chgcar1, scale_factor,\
-        chgcar2))
+    print("I will compute : {0} + {1}*{2}".format(chgcar1, scale_factor,
+                                                  chgcar2))
 
     if not question("Do you agree ?"):
         _die()
@@ -1584,6 +1601,7 @@ def chgsum():
             _die()
     print(" write sum density in : CHGCAR_sum\n" + dashedLine)
     rho_sum.write_file("CHGCAR_sum")
+
 
 def get_deplacement(xmlfile="vasprun.xml", fs1=None, fs2=None):
     """ get displacement between two structures """
@@ -1644,6 +1662,7 @@ def get_deplacement(xmlfile="vasprun.xml", fs1=None, fs2=None):
 
         print(ligne)
 
+
 def make_supercell(nx=1, ny=1, nz=1):
     """
     Read a structure from CONTCAR or POSCAR file and build a supercell
@@ -1677,6 +1696,7 @@ def make_supercell(nx=1, ny=1, nz=1):
 
     return s
 
+
 def neighbors(iat, radius=3.0, struct="POSCAR"):
     """
     Print the neighbor list of atom number iat.
@@ -1685,15 +1705,16 @@ def neighbors(iat, radius=3.0, struct="POSCAR"):
     print("read file ----> %s\n" % struct)
 
     s = mg.Structure.from_file(struct)
-    nlist = s.get_neighbors(s[iat], radius) #.sort(key = lambda x: x[1])
+    nlist = s.get_neighbors(s[iat], radius)  # .sort(key = lambda x: x[1])
 
     # sort by neighbor distance
-    nlist.sort(key = lambda x: x[1])
+    nlist.sort(key=lambda x: x[1])
 
     print("Neighbors of atom %s_%d" % (s[iat].specie.symbol, iat + 1))
     for n in nlist:
         site, d = n
         print("    %3s: %8.3f" % (site.specie.symbol, d))
+
 
 def all_neighbors(radius=3., struct="POSCAR"):
     """
@@ -1711,8 +1732,8 @@ def all_neighbors(radius=3., struct="POSCAR"):
     for site, neiglist in zip(s, allneig):
         iat += 1
         print("\nNeighbors of atom %s_%d" % (site.specie.symbol, iat))
-        neiglist.sort(key = lambda x: x[1])
-        uneq =list()
+        neiglist.sort(key=lambda x: x[1])
+        uneq = list()
         for neig in neiglist:
             site, d = neig
             if len(uneq) == 0:
@@ -1722,7 +1743,7 @@ def all_neighbors(radius=3., struct="POSCAR"):
                 for i, u in enumerate(uneq):
                     usite, ud, n = u
                     if usite.specie.symbol == site.specie.symbol and \
-                        fabs(d - ud) < th:
+                            fabs(d - ud) < th:
                         new = False
                         n += 1
                         uneq[i] = (usite, ud, n)
@@ -1734,9 +1755,10 @@ def all_neighbors(radius=3., struct="POSCAR"):
             site, d, n = neig
             print("    %3s (%2d): %10.4f" % (site.specie.symbol, n, d))
 
-# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 # various tools
-# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
 
 class Colors(object):
     """ a tool in order to print with color """
@@ -1767,6 +1789,7 @@ class Colors(object):
         """ display all available colors """
         for color in cls.avail:
             cls.cprint(color, "%-8s : %s" % (color, m))
+
 
 class HumanSize(object):
     """ convert octet size in human format """
@@ -1809,4 +1832,3 @@ class HumanSize(object):
 if __name__ == "__main__":
     check()
     select()
-
