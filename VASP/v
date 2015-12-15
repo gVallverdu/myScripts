@@ -989,15 +989,20 @@ def plot_proj_dos(xmlfile="vasprun.xml", tofile=False):
         for i, el in enumerate(dos.structure.composition.elements):
             el_dos = dos.get_element_spd_dos(el)
             plt.subplot(nplots, 1, i + 1)
-            plt.plot(dos.energies - dos.efermi, dos.densities[Spin.up], "k-",
+            plt.plot(dos.energies - dos.efermi, dos.densities[Spin.up],
+                     linestyle="-", color="#888888",
                      label="total")
+            plt.fill_between(dos.energies - dos.efermi, np.zeros(len(dos.energies)),
+                             dos.densities[Spin.up], color="#CCCCCC")
             for orb, pdos in el_dos.items():
                 plt.plot(dos.energies - dos.efermi, pdos.densities[Spin.up], colors[orb],
                          label=orb.lower())
 
             if run.is_spin:
                 plt.plot(dos.energies - dos.efermi, -dos.densities[Spin.down],
-                         "k-")
+                         linestyle="-", color="#888888")
+                plt.fill_between(dos.energies - dos.efermi, np.zeros(len(dos.energies)),
+                                 -dos.densities[Spin.down], color="#CCCCCC")
                 for orb, pdos in el_dos.items():
                     plt.plot(dos.energies - dos.efermi, -pdos.densities[Spin.down],
                              colors[orb])

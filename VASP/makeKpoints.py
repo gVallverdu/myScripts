@@ -8,7 +8,7 @@ Create a KPOINTS file for a band structure calculation. This script use
 methods of pymatgen in order to compute and select high symetry lines
 in the first brillouin zone.
 
-SYNTAX 
+SYNTAX
         makeKpoints.py [OPTIONS] [STRUCTURE FILE]
 
 STRUCTURE FILE
@@ -16,7 +16,7 @@ STRUCTURE FILE
 
 OPTIONS
         -d ndiv
-                ndiv is a integer corresponding to the number of 
+                ndiv is a integer corresponding to the number of
                 k-points needed along each symetry line
 """
 
@@ -31,7 +31,7 @@ import os
 import pymatgen as mg
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.symmetry.bandstructure import HighSymmKpath
-from pymatgen.io.vaspio.vasp_input import Kpoints
+from pymatgen.io.vasp.inputs import Kpoints
 
 # default args
 fstruct = "POSCAR"
@@ -75,12 +75,12 @@ print("\nList of high symmetry k-points:")
 print("-------------------------------")
 for key, val in ibz.kpath["kpoints"].items():
     print("%8s %s" % (key, str(val)))
- 
+
 # suggested path for the band structure
 print("\nSuggested paths in first brillouin zone:")
 print("----------------------------------------")
 for i, path in enumerate(ibz.kpath["path"]):
-    print("   %2d:" % (i+1), " -> ".join(path))
+    print("   %2d:" % (i + 1), " -> ".join(path))
 
 # write the KPOINTS file
 print("\nWrite file KPOINTS")
