@@ -947,7 +947,7 @@ def plot_proj_dos(xmlfile="vasprun.xml", tofile=False):
                 lines += "# column 3: DOS projected on AO type s\n"
                 lines += "# column 4: DOS projected on AO type p\n"
                 lines += "# column 5: DOS projected on AO type d\n"
-                for i in xrange(len(dos.energies)):
+                for i in range(len(dos.energies)):
                     lines += "%12.7f " % (dos.energies[i] - dos.efermi)
                     lines += "%12.7f " % tdos.densities[Spin.up][i]
                     lines += "%12.7f " % el_dos["S"].densities[Spin.up][i]
@@ -964,7 +964,7 @@ def plot_proj_dos(xmlfile="vasprun.xml", tofile=False):
                 lines += "# column 7: DOS down projected on AO type p\n"
                 lines += "# column 8: DOS up projected on AO type d\n"
                 lines += "# column 9: DOS down projected on AO type d\n"
-                for i in xrange(len(dos.energies)):
+                for i in range(len(dos.energies)):
                     lines += "%12.7f " % (dos.energies[i] - dos.efermi)
                     lines += "%12.7f " % tdos.densities[Spin.up][i]
                     lines += "%12.7f " % -tdos.densities[Spin.down][i]
@@ -1061,7 +1061,7 @@ def plot_at_dos(iat, xmlfile="vasprun.xml"):
             lines += "# column %2d: DOS projected on %s\n" % (nc, orb)
 
         # data
-        for i in xrange(len(dos.energies)):
+        for i in range(len(dos.energies)):
             lines += "%12.7f " % (dos.energies[i] - dos.efermi)
             lines += "%12.7f " % sitedos.densities[Spin.up][i]
             for orb in ["S", "P", "D"]:
@@ -1090,7 +1090,7 @@ def plot_at_dos(iat, xmlfile="vasprun.xml"):
             lines += "# column %2d: DOS down projected on %s\n" % (nc, orb)
 
         # data
-        for i in xrange(len(dos.energies)):
+        for i in range(len(dos.energies)):
             lines += "%12.7f " % (dos.energies[i] - dos.efermi)
             lines += "%12.7f " % sitedos.densities[Spin.up][i]
             lines += "%12.7f " % sitedos.densities[Spin.down][i]
@@ -1340,7 +1340,7 @@ def readSelectiveDynamics(f="POSCAR"):
             if poscar[7][0].lower() == "s":
                 freeze = list()
                 iat = 0
-                for iat in xrange(nat):
+                for iat in range(nat):
                     line = [el.upper() for el in poscar[9 + iat].split()[3:6]]
                     if "F" in line:
                         freeze.append([True] + line)
@@ -1348,7 +1348,7 @@ def readSelectiveDynamics(f="POSCAR"):
                         freeze.append([False] + line)
             else:
                 Colors.cprint("y", "Selective Dynamics is not present in %s" % f)
-                freeze = [[False, " ", " ", " "] for iat in xrange(nat)]
+                freeze = [[False, " ", " ", " "] for iat in range(nat)]
 
     else:
         _die("\nError, I need a POSCAR file", 1)
@@ -1413,7 +1413,7 @@ def showcvg(xmlfile="vasprun.xml"):
                     out.readline()
                     forces = np.array(
                         [[float(fx) for fx in out.readline().split()[4:7]]
-                         for iat in xrange(nions)])
+                         for iat in range(nions)])
                     forces = np.sqrt((forces**2).sum(axis=1))
                     valmax = -1
                     ave = 0.
@@ -1527,7 +1527,7 @@ def get_forces(outfile):
             if "TOTAL-FORCE" in line:
                 forces = list()
                 out.readline()
-                for iat in xrange(nat):
+                for iat in range(nat):
                     line = out.readline()
                     fxyz = np.array([float(fx) for fx in line.split()[3:6]])
                     f = np.sqrt((fxyz**2).sum())
@@ -1539,7 +1539,7 @@ def get_forces(outfile):
     print(72 * "-")
     print(" iat at   freeze     fx        fy        fz          f            cvg")
     print(72 * "-")
-    for iat in xrange(nat):
+    for iat in range(nat):
         m = ("%4d %3s  " + 3 * "%2s" + 3 * "%10.4f" + " %10.3f") % \
             tuple([iat + 1, struct[iat].specie.symbol] + freeze[iat][1:] + forces[iat])
         if freeze[iat][0]:
