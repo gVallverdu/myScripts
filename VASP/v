@@ -61,6 +61,11 @@ SUB-COMMANDS
             directory and all subdirectories. Ask for authorization before
             deletion.
 
+        makekpts
+            Set up a KPOINTS file for bands structure calculations following
+            Setyawan, W.; Curtarolo, S. Computational Materials Science 2010,
+            49 (2), 299–312.
+
     Extract data
     ------------
 
@@ -186,9 +191,11 @@ except ImportError:
 
 try:
     import pymatgen as mg
-    from pymatgen.io.vasp.inputs import Incar, Potcar, Poscar
+    from pymatgen.io.vasp.inputs import Incar, Potcar, Poscar, Kpoints
     from pymatgen.io.vasp.outputs import Outcar, Vasprun, Oszicar, Chgcar
     from pymatgen.electronic_structure.core import Spin
+    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+    from pymatgen.symmetry.bandstructure import HighSymmKpath
 except ImportError:
     print("\033[93m\n ## Pymatgen may be not available ##\n\033[0m")
 
@@ -232,7 +239,7 @@ def check():
     """ check options """
 
     options = ["h", "help", "-h", "--help",
-               "clean", "sp", "spb", "restart", "purge", "lr",
+               "clean", "sp", "spb", "restart", "purge", "lr", "makekpts",
                "cell", "cl", "chgsum", "charges", "cvg",
                "tdos", "pdos", "mag", "dep", "atdos",
                "forces", "supercell", "neighbors", "allneighbors"]
@@ -281,6 +288,14 @@ def select():
         makeLocalRestart()
     elif opt == "purge":
         purgeRuns()
+    elif opt == "makekpts":
+        fstruct = "POSCAR"
+        if len(sys.argv) == 3:
+            fstruct = sys.argv[2]
+        if not os.path.exists(fstruct):
+            _die("File %s does not exist" % fstruct, 1)
+        else:
+            make_kpoints(fstruct)
 
     elif opt == "cell":
         # POSCAR file
@@ -756,9 +771,51 @@ def purgeRuns():
     print(dashedLine)
 
 
+def make_kpoints(fstruct="POSCAR", ndiv=20):
+    """
+    Create a KPOINTS file for a band structure calculation. This script use
+    methods of pymatgen in order to compute and select high symetry lines
+    in the first brillouin zone.
+
+    Setyawan, W.; Curtarolo, S. Computational Materials Science 2010,
+    49 (2), 299–312.
+    """
+    # read structure
+    struct = mg.Structure.from_file(fstruct)
+
+    # symmetry information
+    struct_sym = SpacegroupAnalyzer(struct)
+    print("\nLattice details:")
+    print("----------------")
+    print("lattice type : {0}".format(struct_sym.get_lattice_type()))
+    print("space group  : {0} ({1})".format(struct_sym.get_spacegroup_symbol(),
+                                            struct_sym.get_spacegroup_number()))
+
+    # Compute first brillouin zone
+    ibz = HighSymmKpath(struct)
+    print("ibz type     : {0}".format(ibz.name))
+    ibz.get_kpath_plot(savefig="path.png")
+
+    # print specific kpoints in the first brillouin zone
+    print("\nList of high symmetry k-points:")
+    print("-------------------------------")
+    for key, val in ibz.kpath["kpoints"].items():
+        print("%8s %s" % (key, str(val)))
+
+    # suggested path for the band structure
+    print("\nSuggested paths in first brillouin zone:")
+    print("----------------------------------------")
+    for i, path in enumerate(ibz.kpath["path"]):
+        print("   %2d:" % (i + 1), " -> ".join(path))
+
+    # write the KPOINTS file
+    print("\nWrite file KPOINTS")
+    Kpoints.automatic_linemode(ndiv, ibz).write_file("KPOINTS")
+
 # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 # extract data
 # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
 
 def cell(poscar="CONTCAR"):
     """
