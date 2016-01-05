@@ -110,6 +110,18 @@ SUB-COMMANDS
             projected DOS on atom index iat and dump the data into a file.
             iat goes from 1 to the number of atom.
 
+        bands BANDPATH [DOSPATH]
+            read band structure from 'vasprun.xml' and plot it using the
+            BSPlotter tools included into pymatgen. BANDPATH and DOSPATH
+            are the paths to the vasprun.xml file of the band structure
+            calculation and the DOS calculation respectively. If DOSPATH is not
+            present, the fermi level is taken from the band structure
+            calculation (less accurate).
+
+            Examples:
+                v bands ./Bands ./DOS
+                v bands ./
+
         mag [full, threshold]
             read OUTCAR and POSCAR file and print magnetization of each atom at
             the last ionic step.
@@ -196,6 +208,7 @@ try:
     from pymatgen.electronic_structure.core import Spin
     from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
     from pymatgen.symmetry.bandstructure import HighSymmKpath
+    from pymatgen.electronic_structure.plotter import BSPlotter
 except ImportError:
     print("\033[93m\n ## Pymatgen may be not available ##\n\033[0m")
 
@@ -241,7 +254,7 @@ def check():
     options = ["h", "help", "-h", "--help",
                "clean", "sp", "spb", "restart", "purge", "lr", "makekpts",
                "cell", "cl", "chgsum", "charges", "cvg",
-               "tdos", "pdos", "mag", "dep", "atdos",
+               "tdos", "pdos", "mag", "dep", "atdos", "bands",
                "forces", "supercell", "neighbors", "allneighbors"]
 
     if len(sys.argv) < 2:
@@ -386,6 +399,19 @@ def select():
             _die("Error, iat goes from 1 to number of atoms", 1)
 
         plot_at_dos(iat, xmlfile)
+
+    elif opt == "bands":
+        bandpath = "./"
+        dospath = None
+        narg = len(sys.argv)
+        if narg == 3:
+            bandpath = sys.argv[2]
+        elif narg == 4:
+            bandpath = sys.argv[2]
+            dospath = sys.argv[3]
+        elif narg > 4:
+            _die("Error, too much arguments", 1)
+        plot_bands(bandpath, dospath)
 
     elif opt == "mag":
         full = False
@@ -1160,6 +1186,49 @@ def plot_at_dos(iat, xmlfile="vasprun.xml"):
             lines += "\n"
 
     open("DOS_%s%d.dat" % (site.specie.symbol, iat), "w").write(lines)
+
+
+def plot_bands(bandpath, dospath=None):
+    """
+    Plot the band structure using the BSPlotter included in pymatgen. bandpath
+    and dospath are the paths to the vasprun.xml file of the band structure
+    calculation and the DOS calculation respectively. The dospath is used
+    to read the fermi level. If dospath is None, the fermi level is read in
+    the band structure calculation (less accurate).
+
+    The function assumes a KPOINTS file is present in bandpath folder and the
+    band structure calculation was done in line mode.
+
+    Args:
+        bandpath (str): path to the vasprun.xml file of the band structure
+        dospath (str): path to the vasprun.xml file of the DOS
+    """
+    # read vasprun.xml from band structure calculation
+    bandxml = os.path.join(bandpath, "vasprun.xml")
+    if os.path.exists(bandxml):
+        bandrun = Vasprun(bandxml, parse_eigen=True)
+    else:
+        _die("BANDPATH: File {0} does not exist".format(bandxml), 1)
+
+    # read efermi from DOS calculation if present
+    if dospath:
+        dosxml = os.path.join(dospath, "vasprun.xml")
+        if os.path.exists(dosxml):
+            efermi = Vasprun(dosxml, parse_eigen=False).efermi
+        else:
+            _die("DOSPATH: File {0} does not exsit".format(dosxml), 1)
+    else:
+        efermi = bandrun.efermi
+
+    # check KPOINTS file is available
+    kpoint = os.path.join(bandpath, "KPOINTS")
+    if not os.path.exists(kpoint):
+        _die("KPOINTS file not find: {0}".format(kpoint), 1)
+
+    # band structure plot
+    bands = bandrun.get_band_structure(kpoints_filename=kpoint, efermi=efermi,
+                                       line_mode=True)
+    BSPlotter(bands).show()
 
 
 def get_mag(full=False, plotThreshold=.1):
