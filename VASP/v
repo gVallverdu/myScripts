@@ -835,8 +835,9 @@ def make_kpoints(fstruct="POSCAR", ndiv=20):
         print("   %2d:" % (i + 1), " -> ".join(path))
 
     # write the KPOINTS file
-    print("\nWrite file KPOINTS")
-    Kpoints.automatic_linemode(ndiv, ibz).write_file("KPOINTS")
+    print("\nCorresponding KPOINTS file")
+    print("--------------------------")
+    print(Kpoints.automatic_linemode(ndiv, ibz))
 
 # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 # extract data

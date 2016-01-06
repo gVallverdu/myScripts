@@ -51,3 +51,7 @@ chgsplit.f90
 
 makeCL.py
     Python script in order to setup a series of corelevel calculations.
+
+bandstructure.py
+    Python script which relies on pymatgen in order to plot band structure
+    diagram.
