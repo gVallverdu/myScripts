@@ -261,10 +261,12 @@ def check():
         print("available sub-command:")
         line = "\t"
         for i, opt in enumerate(options):
-            line += opt + ","
-            if i % 6 == 0:
+            line += opt.rjust(14) + ","
+            if (i + 1) % 6 == 0:
                 print(line)
                 line = "\t"
+
+        print("try 'v help | less' to get help.")
         _die("\nERROR, you must give a sub-command", 1)
 
     opt = sys.argv[1]
