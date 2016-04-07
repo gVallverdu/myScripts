@@ -11,7 +11,7 @@ from matplotlib.gridspec import GridSpec
 
 import pymatgen as mg
 from pymatgen.io.vasp.outputs import Vasprun, BSVasprun
-from pymatgen.electronic_structure.core import Spin
+from pymatgen.electronic_structure.core import Spin, OrbitalType
 from pymatgen.electronic_structure.plotter import BSPlotter
 
 
@@ -166,15 +166,15 @@ def make_spd_dos_plot(ax, dosrun, spin, reverse=False, **kargs):
 
     # spd contribution
     if s:
-        ax.plot(spd_dos["S"].densities[spin],
+        ax.plot(spd_dos[OrbitalType.s].densities[spin],
                 dosrun.tdos.energies - dosrun.efermi,
                 "r-", label=s, linewidth=linewidth)
     if p:
-        ax.plot(spd_dos["P"].densities[spin],
+        ax.plot(spd_dos[OrbitalType.p].densities[spin],
                 dosrun.tdos.energies - dosrun.efermi,
                 "g-", label=p, linewidth=linewidth)
     if d:
-        ax.plot(spd_dos["D"].densities[spin],
+        ax.plot(spd_dos[OrbitalType.d].densities[spin],
                 dosrun.tdos.energies - dosrun.efermi,
                 "b-", label=d, linewidth=linewidth)
 
@@ -326,7 +326,7 @@ def make_spd_band_plot(ax, bands, yticklabels=True, **kargs):
 
     # spin polarized calculation
     if bands.is_spin_polarized:
-        all_spins = Spin.all_spins
+        all_spins = [Spin.up, Spin.down]
     else:
         all_spins = [Spin.up]
 
@@ -397,7 +397,7 @@ def make_el_band_plot(ax, bands, yticklabels=True, **kargs):
 
     # spin polarized calculation
     if bands.is_spin_polarized:
-        all_spins = Spin.all_spins
+        all_spins = [Spin.up, Spin.down]
     else:
         all_spins = [Spin.up]
 
@@ -539,21 +539,23 @@ if __name__ == "__main__":
                  "loc": "center right"}
 
     # Ni
-    # bandpath = "./Bandes"
-    # dospath = "./DOS/"
-    # bandopt = {"name": "Ni"}
-    # dosopt = {"s": "4s", "p": "4p", "d": "3d", "xlim": (1e-4, 3)}
-    # bands_plot(bandpath, dospath, make_bs_plot=make_spd_band_plot,
-    #            make_dos_plot=make_spd_dos_plot, legendopt=legendopt,
-    #            bandopt=bandopt, dosopt=dosopt, ylim=(-10, 6))
+    root = "../../../Recherche/VASP/TP_VASP/Ni_dev/"
+    bandpath = root + "Bandes/"
+    dospath = root + "DOS/"
+    bandopt = {"name": "Ni"}
+    dosopt = {"s": "4s", "p": "4p", "d": "3d", "xlim": (1e-4, 3)}
+    bands_plot(bandpath, dospath, make_bs_plot=make_spd_band_plot,
+               make_dos_plot=make_spd_dos_plot, legendopt=legendopt,
+               bandopt=bandopt, dosopt=dosopt, ylim=(-10, 6))
 
     # Sr3V2O7
-    bandpath = "./Bandes"
-    dospath = "./DOS_600/"
+    root = "../../../GitBook/Library/Import/tp-etat-solide/Sr3V2O7/calculs/ucell/"
+    bandpath = root + "Bandes_short/"
+    dospath = root + "DOS/"
     elements = [mg.Element("Sr"), mg.Element("V"), mg.Element("O")]
     dosopt = {"xlim": (1e-4, 50), "elements": elements}
     bandopt = {"elements": elements}
     bands_plot(bandpath, dospath, make_bs_plot=make_el_band_plot,
                make_dos_plot=make_el_dos_plot, figsize=(11.69, 8.27),
-               bandopt=bandopt, dosopt=dosopt, ylim=(-20, 7),
+               bandopt=bandopt, dosopt=dosopt, ylim=(-7, 3),
                legendopt=legendopt)
