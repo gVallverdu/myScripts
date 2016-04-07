@@ -205,7 +205,7 @@ try:
     import pymatgen as mg
     from pymatgen.io.vasp.inputs import Incar, Potcar, Poscar, Kpoints
     from pymatgen.io.vasp.outputs import Outcar, Vasprun, Oszicar, Chgcar
-    from pymatgen.electronic_structure.core import Spin
+    from pymatgen.electronic_structure.core import Spin, OrbitalType
     from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
     from pymatgen.symmetry.bandstructure import HighSymmKpath
     from pymatgen.electronic_structure.plotter import BSPlotter
@@ -977,7 +977,9 @@ def plot_total_dos(xmlfile="vasprun.xml", tofile=False):
                                    run.tdos.densities[Spin.up],
                                    run.tdos.densities[Spin.down]):
                 lines += "%12.7f %12.7f %12.7f\n" % (e - run.efermi, up, -down)
-        open("total_DOS.dat", "w").write(lines)
+
+        with open("total_DOS.dat", "w") as f:
+            f.write(lines)
 
     else:
         # plot
@@ -1022,47 +1024,45 @@ def plot_proj_dos(xmlfile="vasprun.xml", tofile=False):
     dos = run.complete_dos
     print("gap = %12.6f" % dos.get_gap())
 
+    oatypes = (OrbitalType.s, OrbitalType.p, OrbitalType.d)
+
     if tofile:
         el_tdos = dos.get_element_dos()
         for el, tdos in el_tdos.items():
             el_dos = dos.get_element_spd_dos(el)
             lines = "# Element : %s\n" % el.symbol
-            lines += "# column 1: E - E_fermi (eV)\n"
+            lines += "# column  1: E - E_fermi (eV)\n"
             if not run.is_spin:
-                lines += "# column 2: DOS projected on %s\n" % el.symbol
-                lines += "# column 3: DOS projected on AO type s\n"
-                lines += "# column 4: DOS projected on AO type p\n"
-                lines += "# column 5: DOS projected on AO type d\n"
+                lines += "# column  2: DOS projected on %s\n" % el.symbol
+                for i, oa in enumerate(oatypes):
+                    lines += "# column %2d: DOS projected on AO type %s\n" % (i + 3, oa.name)
                 for i in range(len(dos.energies)):
                     lines += "%12.7f " % (dos.energies[i] - dos.efermi)
                     lines += "%12.7f " % tdos.densities[Spin.up][i]
-                    lines += "%12.7f " % el_dos["S"].densities[Spin.up][i]
-                    lines += "%12.7f " % el_dos["P"].densities[Spin.up][i]
-                    lines += "%12.7f " % el_dos["D"].densities[Spin.up][i]
+                    for oa in oatypes:
+                        lines += "%12.7f " % el_dos[oa].densities[Spin.up][i]
                     lines += "\n"
 
             else:
-                lines += "# column 2: DOS up projected on %s\n" % el.symbol
-                lines += "# column 3: DOS down projected on %s\n" % el.symbol
-                lines += "# column 4: DOS up projected on AO type s\n"
-                lines += "# column 5: DOS down projected on AO type s\n"
-                lines += "# column 6: DOS up projected on AO type p\n"
-                lines += "# column 7: DOS down projected on AO type p\n"
-                lines += "# column 8: DOS up projected on AO type d\n"
-                lines += "# column 9: DOS down projected on AO type d\n"
+                lines += "# column  2: DOS up projected on %s\n" % el.symbol
+                lines += "# column  3: DOS down projected on %s\n" % el.symbol
+                i = 4
+                for oa in oatypes:
+                    lines += "# column %2d: DOS up projected on AO type %s\n" % (i, oa.name)
+                    i += 1
+                    lines += "# column %2d: DOS down projected on AO type %s\n" % (i, oa.name)
+                    i += 1
                 for i in range(len(dos.energies)):
                     lines += "%12.7f " % (dos.energies[i] - dos.efermi)
                     lines += "%12.7f " % tdos.densities[Spin.up][i]
                     lines += "%12.7f " % -tdos.densities[Spin.down][i]
-                    lines += "%12.7f " % el_dos["S"].densities[Spin.up][i]
-                    lines += "%12.7f " % -el_dos["S"].densities[Spin.down][i]
-                    lines += "%12.7f " % el_dos["P"].densities[Spin.up][i]
-                    lines += "%12.7f " % -el_dos["P"].densities[Spin.down][i]
-                    lines += "%12.7f " % el_dos["D"].densities[Spin.up][i]
-                    lines += "%12.7f " % -el_dos["D"].densities[Spin.down][i]
+                    for oa in oatypes:
+                        lines += "%12.7f " % el_dos[oa].densities[Spin.up][i]
+                        lines += "%12.7f " % -el_dos[oa].densities[Spin.down][i]
                     lines += "\n"
 
-            open("DOS_%s.dat" % el.symbol, "w").write(lines)
+            with open("DOS_%s.dat" % el.symbol, "w") as f:
+                f.write(lines)
 
     else:
         # plot
@@ -1070,7 +1070,7 @@ def plot_proj_dos(xmlfile="vasprun.xml", tofile=False):
         plt.rc('font', **font)
         plt.figure(figsize=(11.69, 8.27))  # A4
 
-        colors = {"S": "r-", "P": "g-", "D": "b-"}
+        colors = {OrbitalType.s: "r-", OrbitalType.p: "g-", OrbitalType.d: "b-"}
         nplots = len(dos.structure.composition.elements)
         for i, el in enumerate(dos.structure.composition.elements):
             el_dos = dos.get_element_spd_dos(el)
@@ -1082,7 +1082,7 @@ def plot_proj_dos(xmlfile="vasprun.xml", tofile=False):
                              dos.densities[Spin.up], color="#CCCCCC")
             for orb, pdos in el_dos.items():
                 plt.plot(dos.energies - dos.efermi, pdos.densities[Spin.up], colors[orb],
-                         label=orb.lower())
+                         label=orb)
 
             if run.is_spin:
                 plt.plot(dos.energies - dos.efermi, -dos.densities[Spin.down],
@@ -1130,6 +1130,8 @@ def plot_at_dos(iat, xmlfile="vasprun.xml"):
     sitedos = dos.get_site_dos(site)
     print("gap = %12.6f" % dos.get_gap())
 
+    oatypes = (OrbitalType.s, OrbitalType.p, OrbitalType.d)
+
     # print file
     lines = "# Element  : %s_%d\n" % (site.specie.symbol, iat)
     lines += "# column  1: E - E_fermi (eV)\n"
@@ -1139,9 +1141,9 @@ def plot_at_dos(iat, xmlfile="vasprun.xml"):
         nc += 1
         lines += "# column %2d: DOS projected on %s_%d\n" % (nc,
                                                              site.specie.symbol, iat)
-        for orb in ["s", "p", "d"]:
+        for oa in oatypes:
             nc += 1
-            lines += "# column %2d: DOS projected on all %s AO\n" % (nc, orb)
+            lines += "# column %2d: DOS projected on all %s AO\n" % (nc, oa)
         for orb in dos.pdos[site]:
             nc += 1
             lines += "# column %2d: DOS projected on %s\n" % (nc, orb)
@@ -1150,8 +1152,8 @@ def plot_at_dos(iat, xmlfile="vasprun.xml"):
         for i in range(len(dos.energies)):
             lines += "%12.7f " % (dos.energies[i] - dos.efermi)
             lines += "%12.7f " % sitedos.densities[Spin.up][i]
-            for orb in ["S", "P", "D"]:
-                lines += "%12.7f" % spd_dos[orb].densities[Spin.up][i]
+            for oa in oatypes:
+                lines += "%12.7f" % spd_dos[oa].densities[Spin.up][i]
             for pdos in dos.pdos[site].values():
                 lines += "%12.7f" % pdos[Spin.up][i]
             lines += "\n"
@@ -1164,7 +1166,7 @@ def plot_at_dos(iat, xmlfile="vasprun.xml"):
         nc += 1
         lines += "# column %2d: DOS down projected on %s_%d\n" % (nc,
                                                                   site.specie.symbol, iat)
-        for orb in ["s", "p", "d"]:
+        for orb in oatypes:
             nc += 1
             lines += "# column %2d: DOS up projected on all %s AO\n" % (nc, orb)
             nc += 1
@@ -1180,7 +1182,7 @@ def plot_at_dos(iat, xmlfile="vasprun.xml"):
             lines += "%12.7f " % (dos.energies[i] - dos.efermi)
             lines += "%12.7f " % sitedos.densities[Spin.up][i]
             lines += "%12.7f " % sitedos.densities[Spin.down][i]
-            for orb in ["S", "P", "D"]:
+            for orb in oatypes:
                 lines += "%12.7f" % spd_dos[orb].densities[Spin.up][i]
                 lines += "%12.7f" % spd_dos[orb].densities[Spin.down][i]
             for pdos in dos.pdos[site].values():
@@ -1188,7 +1190,8 @@ def plot_at_dos(iat, xmlfile="vasprun.xml"):
                 lines += "%12.7f" % pdos[Spin.down][i]
             lines += "\n"
 
-    open("DOS_%s%d.dat" % (site.specie.symbol, iat), "w").write(lines)
+    with open("DOS_%s%d.dat" % (site.specie.symbol, iat), "w") as f:
+        f.write(lines)
 
 
 def plot_bands(bandpath, dospath=None):
