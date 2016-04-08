@@ -234,7 +234,7 @@ def question(message):
     """ ask a question and read answer """
     answer = None
     while answer is None:
-        a = raw_input(message + " (y/n) : ")
+        a = input(message + " (y/n) : ")
         if a.lower()[0] == "n":
             answer = False
         elif a.lower()[0] == "y" or a.lower()[0] == "o":
@@ -322,7 +322,7 @@ def select():
             posfile += fnmatch.filter(os.listdir(wd), "*.vasp")
             for i, f in enumerate(posfile):
                 print("    %3d -> %s" % (i, f))
-            poscar = posfile[int(raw_input("\nfile number = "))]
+            poscar = posfile[int(input("\nfile number = "))]
 
         elif narg == 3:
             poscar = sys.argv[2]
@@ -614,7 +614,7 @@ def makeRestart(dirname="restart"):
             print("\nSelect a job file among:")
             for i, job in enumerate(jobs):
                 print("     %d : %s" % (i, job))
-            job = jobs[int(raw_input("job file number = "))]
+            job = jobs[int(input("job file number = "))]
             print("cp " + job + " -> " + ndir)
             shutil.copy(os.path.join(wd, job), ndir)
     else:
@@ -732,7 +732,7 @@ def makeSPBader(dirname="SinglePoint"):
     dx = 0.03
     if not question("dx = %f \t accept ?" % dx):
         print("Enter a new dx value")
-        dx = float(raw_input("dx = "))
+        dx = float(input("dx = "))
         print("dx = %f" % dx)
     ngxf = int(ceil(a / dx / 10.) * 10)
     ngyf = int(ceil(b / dx / 10.) * 10)
@@ -784,7 +784,7 @@ def purgeRuns():
             for filename in filenames:
                 if fnmatch.fnmatch(name, filename):
                     fname = os.path.join(root, name)
-                    if raw_input("delete %s ? (y/n) : " % fname) == "y":
+                    if input("delete %s ? (y/n) : " % fname) == "y":
                         print("---> remove %s" % fname)
                         taille += os.path.getsize(fname)
                         os.remove(fname)
@@ -934,8 +934,8 @@ def coreLevel():
             line += "   ".join(cl_at.keys())
             print(line)
 
-        iat = int(raw_input("Atom number : "))
-        ao = raw_input("atomic orbital : ")
+        iat = int(input("Atom number : "))
+        ao = input("atomic orbital : ")
 
     else:
         # atom and AO selected from command line
@@ -1820,7 +1820,7 @@ def make_supercell(nx=1, ny=1, nz=1):
     elif os.path.exists("POSCAR"):
         filename = "POSCAR"
     else:
-        filename = raw_input("Structure file name: ")
+        filename = input("Structure file name: ")
 
     # build supercell
     print("read file : " + filename)
