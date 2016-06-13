@@ -292,7 +292,11 @@ def select():
     elif opt == "sp":
         makeSP()
     elif opt == "spb":
-        makeSPBader()
+        interac = True
+        if len(sys.argv) >= 3:
+            if "-no-i" in sys.argv[2:]:
+                interac = False
+        makeSPBader(interac=interac)
     elif opt == "restart":
         if len(sys.argv) == 3:
             dirname = sys.argv[2]
@@ -674,7 +678,7 @@ def makeSP(dirname="SinglePoint"):
     open(os.path.join(spdir, "INCAR"), "w").writelines(incar)
 
 
-def makeSPBader(dirname="SinglePoint"):
+def makeSPBader(dirname="SinglePoint", dx=0.03, interac=True):
     """ copy necessary files for a single point energy calculation into a
     directory called SinglePoint and add specific key words necessary for a
     bader charges calculation. The new INCAR file is modified in the
@@ -729,8 +733,7 @@ def makeSPBader(dirname="SinglePoint"):
     c = sqrt(vecc[0]**2 + vecc[1]**2 + vecc[2]**2)
 
     # bader grid
-    dx = 0.03
-    if not question("dx = %f \t accept ?" % dx):
+    if interac and not question("dx = %f \t accept ?" % dx):
         print("Enter a new dx value")
         dx = float(input("dx = "))
         print("dx = %f" % dx)
@@ -752,7 +755,8 @@ def makeSPBader(dirname="SinglePoint"):
     incar.append("  NGZF = %d\n" % ngzf)
 
     # write new INCAR
-    open(os.path.join(spdir, "INCAR"), "w").writelines(incar)
+    with open(os.path.join(spdir, "INCAR"), "w") as f:
+        f.writelines(incar)
 
 
 def cleanVasp():
