@@ -1650,7 +1650,14 @@ def get_forces(outfile):
 
     # read EDIFFG
     if os.path.exists("INCAR"):
-        ediffg = Incar.from_file("INCAR")["EDIFFG"]
+        incar = Incar.from_file("INCAR")
+        if "EDIFFG" in incar:
+            ediffg = incar["EDIFFG"]
+        else:
+            ediffg = 100.
+            Colors.cprint("y", "EDIFFG not in INCAR, set EDIFFG = 100.")
+        if ediffg <= 0.:
+            Colors.cprint("y", "EDIFFG > 0.")
     else:
         _die("\nError, I need an INCAR file", 1)
 
@@ -1686,6 +1693,8 @@ def get_forces(outfile):
                     Colors.cprint("g", m + "        cvg")
                 else:
                     Colors.cprint("r", m)
+            else:
+                print(m)
     print(72 * "-")
 
 # * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
