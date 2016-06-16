@@ -1656,7 +1656,7 @@ def get_forces(outfile):
         else:
             ediffg = 100.
             Colors.cprint("y", "EDIFFG not in INCAR, set EDIFFG = 100.")
-        if ediffg <= 0.:
+        if ediffg > 0.:
             Colors.cprint("y", "EDIFFG > 0.")
     else:
         _die("\nError, I need an INCAR file", 1)
