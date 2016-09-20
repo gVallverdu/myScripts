@@ -209,7 +209,7 @@ try:
     from pymatgen.electronic_structure.core import Spin, OrbitalType
     from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
     from pymatgen.symmetry.bandstructure import HighSymmKpath
-    from pymatgen.electronic_structure.plotter import BSPlotter
+    from pymatgen.electronic_structure.plotter import BSPlotter, plot_brillouin_zone_from_kpath
 except ImportError:
     print("\033[93m\n ## Pymatgen may be not available ##\n\033[0m")
 
@@ -822,13 +822,13 @@ def make_kpoints(fstruct="POSCAR", ndiv=20):
     print("\nLattice details:")
     print("----------------")
     print("lattice type : {0}".format(struct_sym.get_lattice_type()))
-    print("space group  : {0} ({1})".format(struct_sym.get_spacegroup_symbol(),
-                                            struct_sym.get_spacegroup_number()))
+    print("space group  : {0} ({1})".format(struct_sym.get_space_group_symbol(),
+                                            struct_sym.get_space_group_number()))
 
     # Compute first brillouin zone
     ibz = HighSymmKpath(struct)
     print("ibz type     : {0}".format(ibz.name))
-    ibz.get_kpath_plot(savefig="path.png")
+    plot_brillouin_zone_from_kpath(ibz,savefig="path.png")
 
     # print specific kpoints in the first brillouin zone
     print("\nList of high symmetry k-points:")
