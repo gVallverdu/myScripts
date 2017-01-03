@@ -19,3 +19,6 @@ bigfiles.py
 zipFile.py
     Python script which look for specific files which correpond to a mask and zip them.
 
+convert.py
+    A simple script to resize a bunch of image using PIL. Look at ImageMagick
+    if available.
