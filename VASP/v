@@ -822,8 +822,8 @@ def make_kpoints(fstruct="POSCAR", ndiv=20):
     print("\nLattice details:")
     print("----------------")
     print("lattice type : {0}".format(struct_sym.get_lattice_type()))
-    print("space group  : {0} ({1})".format(struct_sym.get_space_group_symbol(),
-                                            struct_sym.get_space_group_number()))
+    print("space group  : {0} ({1})".format(struct_sym.get_spacegroup_symbol(),
+                                            struct_sym.get_spacegroup_number()))
 
     # Compute first brillouin zone
     ibz = HighSymmKpath(struct)
