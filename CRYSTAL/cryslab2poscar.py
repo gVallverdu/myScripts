@@ -1,155 +1,144 @@
 #!/usr/bin/env python
 # -*- coding=utf-8 -*-
 
-""" lecture de l'output de CRYSTAL et construction de la surface et du POSCAR Pour VASP """
+"""
+Read the CRYSTAL output file after a SLABCUT and build a POSCAR for the surface model.
+The slab model is put at the center of the box (-c option) or at the bottom of
+the box (-b option). Use -h or --help to get help.
+"""
 
 __author__ = "Germain Vallverdu"
 __email__ = "germain.vallverdu@univ-pau.fr"
 __licence__ = "GPL"
 
-import crystal
-import sys
+import os
+import argparse
+import pymatgen as mg
+from pymatgen.io.vasp.inputs import Poscar
 
-# --------------------
-# elements
-# --------------------
-elementsName = ["H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al",
-"Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni",
-"Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc",
-"Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "La"]
+def get_args():
+    """ get CRYSTAL output file names and options """
 
-# --------------------
-# hauteur de vide en A
-# --------------------
-zvide = 12.0
+    def exist(f):
+        """ 'Type' for argparse - checks that file exists but does not open """
+        if not os.path.isfile(f):
+            raise argparse.ArgumentTypeError("{0} does not exist".format(f))
+        return f
 
-# ------------------------
-# lecture output CRYSTAL09
-# ------------------------
-if len(sys.argv) != 2:
-    print("ERROR : You must give the CRYSTAL output file name")
-    print("python %s crystal.out" % sys.argv[0])
-    exit(1)
-lignes = open(sys.argv[1], "r").readlines()
+    parser = argparse.ArgumentParser(description=__doc__)
 
-sectionCoord = False
-tmp = list()
-for i, ligne in enumerate(lignes):
+    # CRYSTAL output file name is mandatory
+    parser.add_argument("cryout",
+                        help="path to the CRYSTAL output file containing the SLABCUT run",
+                        nargs=1,
+                        metavar="FILE.out",
+                        type=exist)
+    # options
+    parser.add_argument("-o", "--poscar",
+                        help="Name of POSCAR output file",
+                        metavar="POSCAR",
+                        default="POSCAR_slabcut.vasp")
+    parser.add_argument("-z", "--zvide",
+                        help="Vacuum height in angstrom",
+                        metavar="ZVIDE",
+                        default=12.,
+                        type=float)
+    parser.add_argument("-c", '--center', dest='center',
+                        help="Put the slab at the center of the box.",
+                        action='store_true')
+    parser.add_argument("-b", '--bottom', dest='bottom',
+                        help="Put the slab at the bottom of the box.",
+                        action='store_true')
 
-    if "DEFINITION OF THE NEW LATTICE VECTORS" in ligne:
-        while "LATTICE PARAMETERS  (ANGSTROM" not in ligne:
-            i += 1
-            ligne = lignes[i]
-        valeurs = [float(val) for val in lignes[i+2].split() ]
-        slab = crystal.Crystal(a = valeurs[0], \
-                               b = valeurs[1], \
-                               c = valeurs[2], \
-                               alpha = valeurs[3], \
-                               beta  = valeurs[4], \
-                               gamma = valeurs[5], \
-                               name = "slab CRYSTAL")
-        print(slab)
+    return parser.parse_args()
 
-    if "COORDINATES OF THE ATOMS BELONGING TO THE SLAB" in ligne:
-        sectionCoord = True
-        continue
 
-    if sectionCoord:
-        # on saute la premiere ligne
-        if "LAB" in ligne:
+def read_struct(filename):
+    """
+    Read lattice and atom positions from the crystal output file after a
+    SLABCUT run.
+    """
+    with open(filename, "r") as f:
+        lignes = f.readlines()
+
+    sectionCoord = False
+    sites = list()
+    for i, ligne in enumerate(lignes):
+
+        if "DEFINITION OF THE NEW LATTICE VECTORS" in ligne:
+            while "LATTICE PARAMETERS  (ANGSTROM" not in ligne:
+                i += 1
+                ligne = lignes[i]
+            params = [float(val) for val in lignes[i+2].split()]
+            slab_lattice = mg.Lattice.from_lengths_and_angles(params[0:3], params[3:])
+
+        if "COORDINATES OF THE ATOMS BELONGING TO THE SLAB" in ligne:
+            sectionCoord = True
             continue
 
-        # si ligne blanche on sort
-        if ligne.strip() == "" :
-            break
+        if sectionCoord:
+            # on saute la premiere ligne
+            if "LAB" in ligne:
+                continue
 
-        z = int(ligne.split()[1])
-        valeurs = [ float(val) for val in ligne[56:].split() ]
-        tmp.append( [z, valeurs[0], valeurs[1], valeurs[2] ] )
+            # si ligne blanche on sort
+            if ligne.strip() == "" :
+                break
 
-# --------------------
-# cherche zmin et zmax
-# --------------------
-zmin = 1.e15
-zmax = -1.e15
-for x in tmp:
-    if x[3] < zmin:
-        zmin = x[3]
-    if x[3] > zmax:
-        zmax = x[3]
-print("zmin  = {:12.7f}".format(zmin))
-print("zmax  = {:12.7f}".format(zmax))
-print("dz    = {:12.7f}".format(zmax - zmin))
+            z = int(ligne.split()[1])
+            valeurs = [float(val) for val in ligne[56:].split()]
+            sites.append(mg.Site(z, valeurs))
 
-# ---------------------------------
-# choix de la nouvelle valeurs de c
-# ---------------------------------
-newc = zmax - zmin + zvide
-print("new c = {:12.7f}\n".format(newc))
+    return slab_lattice, sites
 
-# -----------------------------------
-# nouveau slab avec c perpendiculaire
-# -----------------------------------
+if __name__ == "__main__":
 
-# nombres d'atomes
-slab.Natoms = len(tmp)
-print("nombre atomes lus = " + str(slab.Natoms) )
+    # read args from command line
+    args = get_args()
+    slab_lattice, sites = read_struct(args.cryout[0])
 
-newSlab = crystal.Crystal(a = slab.a, \
-                          b = slab.b, \
-                          c = newc, \
-                          alpha = 90., \
-                          beta  = 90.,  \
-                          gamma = slab.gamma, \
-                          name = "new slab for VASP")
-newSlab.Natoms = len(tmp)
-print(newSlab)
+    # --------------------
+    # zmin et zmax
+    # --------------------
+    zmin = min([site.z for site in sites])
+    zmax = max([site.z for site in sites])
+    print("zmin  = {:12.7f}".format(zmin))
+    print("zmax  = {:12.7f}".format(zmax))
+    print("dz    = {:12.7f}".format(zmax - zmin))
 
-# --------------------------------------------
-# decalage des coordonnees entre 0 et 1
-# conversion de z en coordonnees reduites
-# decalage de la surface au centre de la boite
-# --------------------------------------------
-for iat in range(newSlab.Natoms):
-    tmp[iat][1] += 0.5
-    tmp[iat][2] += 0.5
-    tmp[iat][3] = tmp[iat][3] / newSlab.c + 0.5
+    # --------------------------------------------------------------
+    # new value of the lattice parameter perpendcular to the surface
+    # --------------------------------------------------------------
+    newc = zmax - zmin + args.zvide
+    print("new c = {:12.7f}\n".format(newc))
 
-# ----------------------
-# composition du slab
-# ----------------------
-atoms = dict()
-for iat in range(newSlab.Natoms):
-    if elementsName[tmp[iat][0] - 1] not in atoms.keys():
-        atoms[elementsName[tmp[iat][0] - 1]] = 1
-    else:
-        atoms[elementsName[tmp[iat][0] - 1]] += 1
-    
-for element in atoms.keys():
-    print("Nbre de {:2s} = {:d}".format(element, atoms[element]))
-    for i in range(atoms[element]):
-        newSlab.atomNames.append(element)
+    a, b, c = slab_lattice.abc
+    newLattice = mg.Lattice.from_lengths_and_angles((a, b, newc),
+                                                    (90., 90., slab_lattice.gamma))
 
-# ----------------------------------
-# on replace les atomes dans l'ordre
-# ----------------------------------
-redCoord = list()
-nat = 0
-for element in atoms.keys():
-    z = elementsName.index(element) + 1
-    for iat in range(newSlab.Natoms):
-        if tmp[iat][0] == z:
-            redCoord.append(tmp[iat][1:])
-            nat += 1
+    # --------------------------------------------
+    # decalage des coordonnees entre 0 et 1 dans (xy)
+    # conversion de z en coordonnees reduites
+    # --------------------------------------------
+    print(args)
+    newSites = list()
+    for site in sites:
+        coords = site.coords
+        coords[0] += .5
+        coords[1] += .5
+        if args.center:
+            coords[2] = coords[2] / newLattice.c + .5
+        elif args.bottom:
+            coords[2] = (coords[2] - zmin) / newLattice.c
+        else:
+            coords[2] = coords[2] / newLattice.c
 
-if nat != len(tmp):
-    print("Error atom number")
-    exit(1)
+        newSites.append(mg.Site(site.specie, coords))
 
-newSlab.redCoord = redCoord
-
-# ------------------
-# Ecriture du POSCAR 
-# ------------------
-newSlab.toPOSCAR()
-
+    # -----------------------------------
+    # make a structure and print POSCAR
+    # -----------------------------------
+    struct = mg.Structure(newLattice, [site.specie for site in newSites], [site.coords for site in newSites])
+    struct.sort()
+    Poscar(struct).write_file(args.poscar)
+    print(struct)
