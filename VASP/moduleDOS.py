@@ -67,7 +67,7 @@ def modulate(xmlfile="vasprun.xml", tofile=False):
         for el in dos.structure.composition.elements:
             i += 1
             lines += "# column %d: Contribution of %s \n" % (i, el.symbol)
-        for i in xrange(len(dos.energies)):
+        for i in range(len(dos.energies)):
             lines += "%12.7f " % (dos.energies[i] - dos.efermi)
             lines += "%12.7f " % BV["total"][i]
             for el in dos.structure.composition.elements:
