@@ -10,8 +10,9 @@ from __future__ import division, print_function
 
 import numpy as np
 import matplotlib.pyplot as plt
-from pymatgen.electronic_structure.core import Spin
+from pymatgen.electronic_structure.core import Spin, OrbitalType
 from pymatgen.io.vasp.outputs import Vasprun
+
 
 __author__ = "Germain Salvato-Vallverdu"
 __email__ = "germain.vallverdu@univ-pau.fr"
@@ -51,9 +52,9 @@ def modulate(xmlfile="vasprun.xml", tofile=False):
                 spd_dos[orb] = el_dos[orb].densities[Spin.up]
 
         # compute the BV
-        BV[el] = sigma.s * spd_dos["S"] \
-               + sigma.p * spd_dos["P"] \
-               + sigma.d * spd_dos["D"]
+        BV[el] = sigma.s * spd_dos[OrbitalType.s] \
+               + sigma.p * spd_dos[OrbitalType.p] \
+               + sigma.d * spd_dos[OrbitalType.d]
 
         BV["total"] += BV[el]
 
