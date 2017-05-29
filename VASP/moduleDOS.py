@@ -11,7 +11,7 @@ from __future__ import division, print_function
 import numpy as np
 import matplotlib.pyplot as plt
 from pymatgen.electronic_structure.core import Spin
-from pymatgen.io.vaspio.vasp_output import Vasprun
+from pymatgen.io.vasp.outputs import Vasprun
 
 __author__ = "Germain Salvato-Vallverdu"
 __email__ = "germain.vallverdu@univ-pau.fr"
