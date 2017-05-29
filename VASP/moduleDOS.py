@@ -83,7 +83,7 @@ def modulate(xmlfile="vasprun.xml", tofile=False):
 
         plt.fill_between(dos.energies - dos.efermi, BV["total"], 0,
             color=(.8, .8, .8))
-        plt.plot(dos.energies - dos.efermi, BV["total"], color=(.5, .5, .5), 
+        plt.plot(dos.energies - dos.efermi, BV["total"], color=(.5, .5, .5),
             label="total")
         color = ["r-", "g-", "b-", "y-", "m-", "c-"]
         for el, c in zip(dos.structure.composition.elements, color):
@@ -233,9 +233,9 @@ class CrossSec(object):
     """
 
     # second row
-    Li_p_Mg = CrossSecSpecie(Kalpha.Mg, "Li_p_Mg", 0.0593, 
+    Li_p_Mg = CrossSecSpecie(Kalpha.Mg, "Li_p_Mg", 0.0593,
         comment="Li+, 1s2 configuration, Mg Kalpha")
-    Li_p_Al = CrossSecSpecie(Kalpha.Al, "Li_p_Al", 0.0568, 
+    Li_p_Al = CrossSecSpecie(Kalpha.Al, "Li_p_Al", 0.0568,
         comment="Li+, 1s2 configuration, Al Kalpha")
 
     N_Mg = CrossSecSpecie(Kalpha.Mg, "N_Mg", 0.0841, 0.0025, 0.0049,
@@ -267,7 +267,7 @@ class CrossSec(object):
     # fourth row
     Mn_Mg = CrossSecSpecie(Kalpha.Mg, "Mn_Mg", 0.0398, 0, 0, 0.0484, 0.0711,
         comment="Mn: 4s2 3d5, Mg Kalpha, 0 for p cros section")
-    Mn_Al = CrossSecSpecie(Kalpha.Al, "Mn_Al", 0.0464, 0, 0, 0.424, 0.622,
+    Mn_Al = CrossSecSpecie(Kalpha.Al, "Mn_Al", 0.0464, 0, 0, 0.0424, 0.0622,
         comment="Mn: 4s2 3d5, Al Kalpha, 0 for p cros section")
     Fe_Mg = CrossSecSpecie(Kalpha.Mg, "Fe_Mg", 0.0425, 0, 0, 0.0788, 0.1156,
         comment="Cu: 4s2 3d6, Mg Kalpha, 0 for p cros section")
