@@ -20,8 +20,12 @@ except ImportError:
 
 def list_img_files(folder="./", ext=(".jpg", ".jpeg", ".png", ".gif")):
     """ Return a list of image files according to ext list """
-    return [f for f in os.listdir(folder) if any(f.lower().endswith(e) for e in ext)]
+    files = os.listdir(folder)
+    for f in files:
+        if f[0] == ".":
+            files.remove(f)
 
+    return [f for f in files if any(f.lower().endswith(e) for e in ext)]
 
 def get_options():
     """ get options from command lines """
