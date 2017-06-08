@@ -13,8 +13,8 @@
 ! syntaxe : xyz mon_calcul.log
 ! fichier de sortie mon_calcul.xyz
 !
-! dans un .log en entree 
-! Extrait la derniere geometrie Input orientation trouvee 
+! dans un .log en entree
+! Extrait la derniere geometrie Input orientation trouvee
 !
 ! dans un .com contenant des coordonnées cartesienne
 ! Extrait la geometrie et l'ecrit au format xyz
@@ -34,9 +34,9 @@ program xyz
   integer, dimension(ndim)           :: mass
   double precision,dimension(ndim,3) :: x
   logical                            :: existe, fin, trouve
- 
+
   write(*,*)
-      
+
   call get_command_argument(1,fichier)
   write(*,*)"lecture du fichier "//trim(fichier)
 
@@ -48,11 +48,11 @@ program xyz
   end if
 
   ! teste .com ou .log
-  klog = 0 
+  klog = 0
   kcom = 0
-  if( index(fichier,".log") /= 0 ) klog = 1
+  if( index(fichier,".log") /= 0 .or. index(fichier,".out") /= 0 ) klog = 1
   if( index(fichier,".com") /= 0 ) kcom = 1
-  if( klog == 0 .and. kcom == 0) then 
+  if( klog == 0 .and. kcom == 0) then
     write(*,*)" type .log ou .com non identifie "//trim(fichier)
     write(*,*)"le nom du fichier doit finir par .log ou .com"
     stop
@@ -86,7 +86,7 @@ program xyz
         if( index(ligne,"Z-Matrix orientation") /= 0 ) trouve = .true.
       end do
 
-      if( .not. fin ) then 
+      if( .not. fin ) then
         read(10,*)
         read(10,*)
         read(10,*)
@@ -158,7 +158,9 @@ program xyz
 ! ecriture du fichier xyz
 
   if( klog == 1 ) then
-    k=index(fichier,".log")
+    if( index(fichier,".log") /= 0 ) k=index(fichier,".log")
+    if( index(fichier,".out") /= 0 ) k=index(fichier,".out")
+
     open(11,file=trim(fichier(:k-1) )//".xyz" )
     write(*,*)"fichier xyz => "//trim(fichier(:k-1) )//".xyz"
   else if(kcom == 1 ) then
@@ -265,7 +267,7 @@ program xyz
       stop
     end if
 
-  end do                  
+  end do
   write(11,*)
   close(11)
 
