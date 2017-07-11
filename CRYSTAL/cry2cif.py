@@ -201,7 +201,9 @@ def cry2cif(filename, filefmt="cif", center=False, sortx=False, sortz=False,
             zi = float(zi)
 
             Z.append(int(Zi))
-            radius.append(float(ri))
+            if nanotube:
+                radius.append(float(ri))
+                
             if p == "F":
                 uniq.append(False)
             else:
@@ -435,8 +437,6 @@ if __name__ == "__main__":
     sortz = args["sortz"]
     b_dum = args["b"]
     c_dum = args["c"]
-
-    print(args)
 
     # call main program
     cry2cif(filename, filefmt, center, sortx, sortz, b_dum, c_dum)
