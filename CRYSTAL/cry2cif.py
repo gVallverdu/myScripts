@@ -20,6 +20,7 @@ __licence__ = "GPL"
 import os
 import datetime
 import argparse
+import re
 from math import pi, cos, sin, sqrt
 
 
@@ -82,14 +83,14 @@ def get_options():
     return parser.parse_args()
 
 
-def cry2cif(filename, filefmt="cif", center=False, sortx=False, sortz=False,
-            b_dum=50, c_dum=50):
+def cry2cif(filename, to="cif", center=False, sortx=False, sortz=False,
+            b=50, c=50):
     """
     Read a CRYSTAL output file and return the structure in a cif or POSCAR format.
 
     Args:
         filename (str): crystal output filename
-        filefmt (str): 'cif' or 'POSCAR', format of the output file (default is cif)
+        to (str): 'cif' or 'POSCAR', format of the output file (default is cif)
         center (bool): if True, the slab or nanotube is translated to the center of
                        the box (default is False)
         sortx (bool): Nanotube : if True, atoms are sorted along x axes (default is False).
@@ -99,6 +100,9 @@ def cry2cif(filename, filefmt="cif", center=False, sortx=False, sortz=False,
 
     """
 
+    b_dum = b
+    c_dum = c
+
     # ----------------------------------------------------------
     # lecture du fichier output
     # ----------------------------------------------------------
@@ -106,7 +110,7 @@ def cry2cif(filename, filefmt="cif", center=False, sortx=False, sortz=False,
     nanotube = False
     locGroupe = "SPACE GROUP"
     primitive = True
-    locMaille = " PRIMITIVE CELL"
+    locMaille_patt = re.compile(r"^ PRIMITIVE CELL")
     with open(filename, "r") as f:
         # read general data
         line = f.readline()
@@ -130,7 +134,7 @@ def cry2cif(filename, filefmt="cif", center=False, sortx=False, sortz=False,
 
             elif "TRANSFORMATION MATRIX PRIMITIVE-CRYSTALLOGRAPHIC CELL" in line:
                 primitive = False
-                locMaille = " CRYSTALLOGRAPHIC CELL "
+                locMaille_patt = re.compile(r"^ PRIMITIVE CELL")
 
             elif "FINAL OPTIMIZED GEOMETRY" in line:
                 end = False
@@ -148,98 +152,113 @@ def cry2cif(filename, filefmt="cif", center=False, sortx=False, sortz=False,
                 print("\nNANOTUBE FROM SLAB")
 
         if end:
-            print("\nWARNING:")
+            print("\n!! WARNING !!")
             print("Optimisation did not converge, final optimized geometry not found.")
-            print("Input geometry will be read instead.\n")
+            print("I will try to export the last geometry instead.\n")
             f.seek(0)
             line = f.readline()
             while " GEOMETRY FOR WAVE FUNCTION " not in line:
                 line = f.readline()
 
-        # read geometry located at locMaille
-        line = f.readline()
-        while locMaille not in line:
+        n_geom = 0
+        while line != "":
+
+            # read geometry located at locMaille
             line = f.readline()
+            while not locMaille_patt.match(line) and line != "":
+                line = f.readline()
 
-        if not slab and not nanotube:
-            volume = float(line.split("=")[1].split()[0].strip(")"))
-        f.readline()
+            if line == "":
+                # end of file ?
+                break
 
-        # lattice parameters
-        a, b, c, alpha, beta, gamma = [float(val) for val in f.readline().split()]
-        if slab:
-            c = c_dum
-        if nanotube:
-            b = b_dum
-            c = c_dum
+            n_geom += 1
 
-        # if slab:
-        #     c = float(input("\nSLAB : c value ? : "))
-        #
-        # if nanotube:
-        #     b = float(input("\nNANOTUBE : b value ? : "))
-        #     c = float(input("\nNANOTUBE : c value ? : "))
-
-        for i in range(4):
+            if not slab and not nanotube:
+                volume = float(line.split("=")[1].split()[0].strip(")"))
             f.readline()
 
-        # read coordinates
-        nom = list()    # atom names
-        red = list()    # reduce coordinates
-        Z = list()      # atomic number
-        uniq = list()   # True if atom belong to the asymmetric unit
-        radius = list() # distance from the axes of the nanotube
-        line = f.readline()
-        while line != "\n":
-            if nanotube:
-                i, p, Zi, nomi, xi, yi, zi, ri = line.split()
-            else:
-                i, p, Zi, nomi, xi, yi, zi = line.split()
-
-            xi = float(xi)
-            yi = float(yi)
-            zi = float(zi)
-
-            Z.append(int(Zi))
-            if nanotube:
-                radius.append(float(ri))
-                
-            if p == "F":
-                uniq.append(False)
-            else:
-                uniq.append(True)
-
-            if len(nomi) == 2:
-                nom.append(nomi[0] + nomi[1].lower())
-            else:
-                nom.append(nomi)
-
+            # lattice parameters
+            a, b, c, alpha, beta, gamma = [float(val) for val in f.readline().split()]
             if slab:
-                if zi > c / 2.:
-                    print("ERROR zi > c / 2")
-                    print("zi = ", zi)
-                    print("c = ", c / 2)
-                    exit(1)
-                red.append([xi, yi, zi / c])
-            elif nanotube:
-                if zi > c / 2.:
-                    print("ERROR zi > c / 2")
-                    print("zi = ", zi)
-                    print("c = " , c / 2)
-                    exit(1)
-                if yi > b / 2.:
-                    print("ERROR yi > b / 2")
-                    print("yi = ", yi)
-                    print("b = ", b / 2)
-                    exit(1)
-                red.append([xi, yi / b, zi / c])
-            else:
-                red.append([xi, yi, zi])
+                c = c_dum
+            if nanotube:
+                b = b_dum
+                c = c_dum
 
+            # if slab:
+            #     c = float(input("\nSLAB : c value ? : "))
+            #
+            # if nanotube:
+            #     b = float(input("\nNANOTUBE : b value ? : "))
+            #     c = float(input("\nNANOTUBE : c value ? : "))
+
+            for i in range(4):
+                f.readline()
+
+            # read coordinates
+            nom = list()    # atom names
+            red = list()    # reduce coordinates
+            Z = list()      # atomic number
+            uniq = list()   # True if atom belong to the asymmetric unit
+            radius = list()  # distance from the axes of the nanotube
             line = f.readline()
+            while line != "\n":
+                if not re.match(r"^\s+\d+\s[TF]\s+\d+\s\S+\s+", line):
+                    # avoid MPI messages
+                    line = f.readline()
+                    continue
+
+                if nanotube:
+                    i, p, Zi, nomi, xi, yi, zi, ri = line.split()
+                else:
+                    i, p, Zi, nomi, xi, yi, zi = line.split()
+
+                xi = float(xi)
+                yi = float(yi)
+                zi = float(zi)
+
+                Z.append(int(Zi))
+                if nanotube:
+                    radius.append(float(ri))
+
+                if p == "F":
+                    uniq.append(False)
+                else:
+                    uniq.append(True)
+
+                if len(nomi) == 2:
+                    nom.append(nomi[0] + nomi[1].lower())
+                else:
+                    nom.append(nomi)
+
+                if slab:
+                    if zi > c / 2.:
+                        print("ERROR zi > c / 2")
+                        print("zi = ", zi)
+                        print("c = ", c / 2)
+                        exit(1)
+                    red.append([xi, yi, zi / c])
+                elif nanotube:
+                    if zi > c / 2.:
+                        print("ERROR zi > c / 2")
+                        print("zi = ", zi)
+                        print("c = ", c / 2)
+                        exit(1)
+                    if yi > b / 2.:
+                        print("ERROR yi > b / 2")
+                        print("yi = ", yi)
+                        print("b = ", b / 2)
+                        exit(1)
+                    red.append([xi, yi / b, zi / c])
+                else:
+                    red.append([xi, yi, zi])
+
+                line = f.readline()
 
     if end:
-        print("cell     : guess geometry")
+        print("Successfully read %d geometries\n" % n_geom)
+        print("cell     : last geometry")
     else:
         if primitive:
             print("cell     : primitive")
@@ -291,7 +310,7 @@ def cry2cif(filename, filefmt="cif", center=False, sortx=False, sortz=False,
     if sortz or sortx:
         print("\nSort atoms along %s" % axes[isort])
         data = zip(nom, uniq, radius, red)
-        dataSorted = sorted(data, key=lambda f:f[-1][isort], reverse=True)
+        dataSorted = sorted(data, key=lambda f: f[-1][isort], reverse=True)
 
         red_final = [ired for iname, iuniq, iradius, ired in dataSorted]
         uniq_final = [iuniq for iname, iuniq, iradius, ired in dataSorted]
@@ -304,7 +323,7 @@ def cry2cif(filename, filefmt="cif", center=False, sortx=False, sortz=False,
         name_final = nom
         radius_final = radius
 
-    if filefmt == "cif":
+    if to == "cif":
         # ----------------------------------------------------------
         # write cif file
         # ----------------------------------------------------------
@@ -343,11 +362,11 @@ def cry2cif(filename, filefmt="cif", center=False, sortx=False, sortz=False,
             if p:
                 lines += "%4s" % name
                 lines += "%20.12f %20.12f %20.12f" % tuple(r)
-                lines +=  "   1.\n"
+                lines += "   1.\n"
             if not p and (slab or nanotube):
                 lines += "%4s" % name
                 lines += "%20.12f %20.12f %20.12f" % tuple(r)
-                lines +=  "   1.\n"
+                lines += "   1.\n"
 
         if nanotube:
             lines += "\n"
@@ -359,21 +378,21 @@ def cry2cif(filename, filefmt="cif", center=False, sortx=False, sortz=False,
             for i, (name, radius) in enumerate(zip(name_final, radius_final)):
                 lines += "%5d %4s %10.3f\n" % (i, name, radius)
 
-    elif filefmt == "POSCAR":
+    elif to == "POSCAR":
         outname = "POSCAR_" + os.path.splitext(filename)[0] + ".vasp"
         lines = "Structure from %s\n" % filename
         lines += " 1.0\n"
 
         # compute lattice vectors
         alphar = alpha * pi / 180.0
-        betar  = beta  * pi / 180.0
+        betar = beta * pi / 180.0
         gammar = gamma * pi / 180.0
 
         veca = [a, 0., 0.]
         vecb = [b * cos(gammar), b * sin(gammar), 0.]
 
-        vecc = [0.,0.,0.]
-        vecc[0] = c * cos( betar )
+        vecc = [0., 0., 0.]
+        vecc[0] = c * cos(betar)
         cy = (cos(alphar) - cos(gammar) * cos(betar)) / sin(gammar)
         vecc[1] = c * cy
         cz = sqrt((sin(betar))**2 - cy**2)
@@ -427,16 +446,9 @@ def cry2cif(filename, filefmt="cif", center=False, sortx=False, sortz=False,
     with open(outname, "w") as f:
         f.write(lines)
 
+
 if __name__ == "__main__":
     # get arguments
     args = vars(get_options())
-    filename = args["filename"]
-    filefmt = args["to"]
-    center = args["center"]
-    sortx = args["sortx"]
-    sortz = args["sortz"]
-    b_dum = args["b"]
-    c_dum = args["c"]
-
     # call main program
-    cry2cif(filename, filefmt, center, sortx, sortz, b_dum, c_dum)
+    cry2cif(**args)
