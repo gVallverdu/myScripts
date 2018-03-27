@@ -62,13 +62,13 @@ struct_sym = SpacegroupAnalyzer(struct)
 print("\nLattice details:")
 print("----------------")
 print("lattice type : {0}".format(struct_sym.get_lattice_type()))
-print("space group  : {0} ({1})".format(struct_sym.get_spacegroup_symbol(),
-                                        struct_sym.get_spacegroup_number()))
+print("space group  : {0} ({1})".format(struct_sym.get_space_group_symbol(),
+                                        struct_sym.get_space_group_number()))
 
 # Compute first brillouin zone
 ibz = HighSymmKpath(struct)
 print("ibz type     : {0}".format(ibz.name))
-ibz.get_kpath_plot(savefig="path.png")
+#ibz.get_kpath_plot(savefig="path.png")
 
 # print specific kpoints in the first brillouin zone
 print("\nList of high symmetry k-points:")
