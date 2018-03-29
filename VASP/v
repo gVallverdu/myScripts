@@ -822,8 +822,8 @@ def make_kpoints(fstruct="POSCAR", ndiv=20):
     print("\nLattice details:")
     print("----------------")
     print("lattice type : {0}".format(struct_sym.get_lattice_type()))
-    print("space group  : {0} ({1})".format(struct_sym.get_spacegroup_symbol(),
-                                            struct_sym.get_spacegroup_number()))
+    print("space group  : {0} ({1})".format(struct_sym.get_space_group_symbol(),
+                                            struct_sym.get_space_group_number()))
 
     # Compute first brillouin zone
     ibz = HighSymmKpath(struct)
@@ -950,10 +950,13 @@ def coreLevel():
         except ValueError:
             _die("Error atom number must be an integer", 1)
 
+        if iat <= 0:
+            raise ValueError("Error, atom number must be between 1 and number of atom")
+
         ao = sys.argv[3]
 
     # print core state energy
-    if cl[iat - 1].has_key(ao):
+    if  ao in cl[iat - 1]:
         print("atom %d -> %2s_%2s = %f eV" % (iat, symbol[iat - 1], ao,
                                               cl[iat - 1][ao][-1]))
     else:
