@@ -19,6 +19,7 @@ __email__ = "germain.vallverdu@univ-pau.fr"
 __licence__ = "GPL"
 __date__ = "June 2014"
 
+
 def modulate(xmlfile="vasprun.xml", tofile=False):
     """
     Multiply DOS by cross sections and plot it using matplotlib
@@ -38,7 +39,7 @@ def modulate(xmlfile="vasprun.xml", tofile=False):
         sigma = CrossSec.from_string(el.symbol)
         print(sigma.comment)
 
-        # spd DOS of the element
+        # spd DOS of the element
         el_dos = dos.get_element_spd_dos(el)
 
         # sum up spin contribution
@@ -46,15 +47,15 @@ def modulate(xmlfile="vasprun.xml", tofile=False):
         if run.is_spin:
             for orb in el_dos.keys():
                 spd_dos[orb] = el_dos[orb].densities[Spin.up] \
-                             + el_dos[orb].densities[Spin.down]
+                    + el_dos[orb].densities[Spin.down]
         else:
             for orb in el_dos.keys():
                 spd_dos[orb] = el_dos[orb].densities[Spin.up]
 
         # compute the BV
         BV[el] = sigma.s * spd_dos[OrbitalType.s] \
-               + sigma.p * spd_dos[OrbitalType.p] \
-               + sigma.d * spd_dos[OrbitalType.d]
+            + sigma.p * spd_dos[OrbitalType.p] \
+            + sigma.d * spd_dos[OrbitalType.d]
 
         BV["total"] += BV[el]
 
@@ -77,30 +78,31 @@ def modulate(xmlfile="vasprun.xml", tofile=False):
         open("BV.dat", "w").write(lines)
 
     else:
-        # plot
+        # plot
         font = {'family': 'serif', 'size': 20}
         plt.rc('font', **font)
-        plt.figure(figsize=(11.69, 8.27)) # A4
+        plt.figure(figsize=(11.69, 8.27))  # A4
 
         plt.fill_between(dos.energies - dos.efermi, BV["total"], 0,
-            color=(.8, .8, .8))
+                         color=(.8, .8, .8))
         plt.plot(dos.energies - dos.efermi, BV["total"], color=(.5, .5, .5),
-            label="total")
+                 label="total")
         color = ["r-", "g-", "b-", "y-", "m-", "c-"]
         for el, c in zip(dos.structure.composition.elements, color):
             plt.plot(dos.energies - dos.efermi, BV[el], c, label=el.symbol)
 
-        # set up figure
-        plt.title("Valence band of " + \
-            run.initial_structure.composition.reduced_formula)
+        # set up figure
+        plt.title("Valence band of " +
+                  run.initial_structure.composition.reduced_formula)
         plt.xlabel(r"$E - E_{f}$   /   eV")
         plt.ylabel("Density of states times cross sections")
         plt.grid()
         ymin, ymax = plt.ylim()
         plt.vlines(0, ymin, ymax, color="k", lw=1, linestyle="--")
-        plt.legend(prop={"size":18})
+        plt.legend(prop={"size": 18})
 
         plt.show()
+
 
 class Kalpha(object):
     """
@@ -111,12 +113,13 @@ class Kalpha(object):
     Al = 1487
     all_energies = {"Mg": Mg, "Al": Al}
 
+
 class CrossSecSpecie(object):
     """
     Store cross sections values of a specie
     """
 
-    def __init__(self, ener, name, s=0, p1=0, p2=0, d1=0, d2=0, comment = None):
+    def __init__(self, ener, name, s=0, p1=0, p2=0, d1=0, d2=0, comment=None):
         """
         Store cross sections values of element of symbol name
 
@@ -199,14 +202,14 @@ class CrossSecSpecie(object):
         """
         Cross section for p1/2 and p3/2 electrons weighted by the multiplicity.
         """
-        return (2*self._p1 + 4*self._p2)/6
+        return (2 * self._p1 + 4 * self._p2) / 6
 
     @property
     def d(self):
         """
         Cross section for d3/2 and d5/2 electrons weighted by the multiplicity.
         """
-        return (4*self._d1 + 6*self._d2)/10
+        return (4 * self._d1 + 6 * self._d2) / 10
 
     @property
     def comment(self):
@@ -216,16 +219,17 @@ class CrossSecSpecie(object):
         return self._comment
 
     def __repr__(self):
-       return self.name
+        return self.name
 
     def __str__(self):
-       line = "Specie name: " + self._name + "\n"
-       line += "Photon energy: " + str(self._ener) + "\n"
-       line += self._comment + "\n"
-       line += "s = " + str(self.s) + "\n"
-       line += "p = " + str(self.p) + "\n"
-       line += "d = " + str(self.d) + "\n"
-       return line
+        line = "Specie name: " + self._name + "\n"
+        line += "Photon energy: " + str(self._ener) + "\n"
+        line += self._comment + "\n"
+        line += "s = " + str(self.s) + "\n"
+        line += "p = " + str(self.p) + "\n"
+        line += "d = " + str(self.d) + "\n"
+        return line
+
 
 class CrossSec(object):
     """
@@ -233,51 +237,51 @@ class CrossSec(object):
     Spectroscopy and Related Phenomena, 8 (1976) 129-137).
     """
 
-    # second row
+    # second row
     Li_p_Mg = CrossSecSpecie(Kalpha.Mg, "Li_p_Mg", 0.0593,
-        comment="Li+, 1s2 configuration, Mg Kalpha")
+                             comment="Li+, 1s2 configuration, Mg Kalpha")
     Li_p_Al = CrossSecSpecie(Kalpha.Al, "Li_p_Al", 0.0568,
-        comment="Li+, 1s2 configuration, Al Kalpha")
+                             comment="Li+, 1s2 configuration, Al Kalpha")
 
     N_Mg = CrossSecSpecie(Kalpha.Mg, "N_Mg", 0.0841, 0.0025, 0.0049,
-        comment="N: 1s2 2s2 2p3 configuration, Mg Kalpha")
+                          comment="N: 1s2 2s2 2p3 configuration, Mg Kalpha")
     N_Al = CrossSecSpecie(Kalpha.Al, "N_Al", 0.0867, 0.0022, 0.0043,
-        comment="N: 1s2 2s2 2p3 configuration, Al Kalpha")
+                          comment="N: 1s2 2s2 2p3 configuration, Al Kalpha")
 
     O_Mg = CrossSecSpecie(Kalpha.Mg, "O_Mg", 0.1345, 0.0073, 0.0145,
-        comment="O: 1s2 2s2 2p4 configuration, Mg Kalpha")
+                          comment="O: 1s2 2s2 2p4 configuration, Mg Kalpha")
     O_Al = CrossSecSpecie(Kalpha.Al, "O_Al", 0.1405, 0.0065, 0.0128,
-        comment="O: 1s2 2s2 2p4 configuration, Al Kalpha")
+                          comment="O: 1s2 2s2 2p4 configuration, Al Kalpha")
 
     # third row
     Na_p_Mg = CrossSecSpecie(Kalpha.Mg, "Na_p_Mg", 0.390, 0.0714, 0.1406,
-        comment="Na+: 1s2 2s2 2p6 configuration, Mg Kalpha")
+                             comment="Na+: 1s2 2s2 2p6 configuration, Mg Kalpha")
     Na_p_Al = CrossSecSpecie(Kalpha.Al, "Na_p_Al", 0.422, 0.0654, 0.1287,
-        comment="Na+: 1s2 2s2 2p6 configuration, Al Kalpha")
+                             comment="Na+: 1s2 2s2 2p6 configuration, Al Kalpha")
 
     P_Mg = CrossSecSpecie(Kalpha.Mg, "P_Mg", 0.0998, 0.0129, 0.0253,
-        comment="P: 1s2 2s2 2p6 3s2 3p3 configuration, Mg Kalpha")
+                          comment="P: 1s2 2s2 2p6 3s2 3p3 configuration, Mg Kalpha")
     P_Al = CrossSecSpecie(Kalpha.Al, "P_Al", 0.1116, 0.0124, 0.0244,
-        comment="P: 1s2 2s2 2p6 3s2 3p3 configuration, Al Kalpha")
+                          comment="P: 1s2 2s2 2p6 3s2 3p3 configuration, Al Kalpha")
 
     S_Mg = CrossSecSpecie(Kalpha.Mg, "S_Mg", 0.1302, 0.0269, 0.0527,
-        comment="S: 1s2 2s2 2p6 3s2 3p4 configuration, Mg Kalpha")
+                          comment="S: 1s2 2s2 2p6 3s2 3p4 configuration, Mg Kalpha")
     S_Al = CrossSecSpecie(Kalpha.Al, "S_Al", 0.1465, 0.0262, 0.0512,
-        comment="S: 1s2 2s2 2p6 3s2 3p3 configuration, Al Kalpha")
+                          comment="S: 1s2 2s2 2p6 3s2 3p3 configuration, Al Kalpha")
 
     # fourth row
     Mn_Mg = CrossSecSpecie(Kalpha.Mg, "Mn_Mg", 0.0398, 0, 0, 0.0484, 0.0711,
-        comment="Mn: 4s2 3d5, Mg Kalpha, 0 for p cros section")
+                           comment="Mn: 4s2 3d5, Mg Kalpha, 0 for p cros section")
     Mn_Al = CrossSecSpecie(Kalpha.Al, "Mn_Al", 0.0464, 0, 0, 0.0424, 0.0622,
-        comment="Mn: 4s2 3d5, Al Kalpha, 0 for p cros section")
+                           comment="Mn: 4s2 3d5, Al Kalpha, 0 for p cros section")
     Fe_Mg = CrossSecSpecie(Kalpha.Mg, "Fe_Mg", 0.0425, 0, 0, 0.0788, 0.1156,
-        comment="Cu: 4s2 3d6, Mg Kalpha, 0 for p cros section")
+                           comment="Cu: 4s2 3d6, Mg Kalpha, 0 for p cros section")
     Fe_Al = CrossSecSpecie(Kalpha.Al, "Fe_Al", 0.0497, 0, 0, 0.1017, 0.0497,
-        comment="Cu: 4s2 3d6, Al Kalpha, 0 for p cros section")
+                           comment="Cu: 4s2 3d6, Al Kalpha, 0 for p cros section")
     Cu_Mg = CrossSecSpecie(Kalpha.Mg, "Cu_Mg", 0.0188, 0, 0, 0.268, 0.390,
-        comment="Cu: 4s1 3d10, Mg Kalpha, 0 for p cros section")
+                           comment="Cu: 4s1 3d10, Mg Kalpha, 0 for p cros section")
     Cu_Al = CrossSecSpecie(Kalpha.Al, "Cu_Al", 0.0221, 0, 0, 0.240, 0.349,
-        comment="Cu: 4s1 3d10, Al Kalpha, 0 for p cros section")
+                           comment="Cu: 4s1 3d10, Al Kalpha, 0 for p cros section")
 
     all_data = (Li_p_Mg, Li_p_Al, N_Mg, N_Al, O_Mg, O_Al,
                 Na_p_Mg, Na_p_Al, P_Mg, P_Al, S_Mg, S_Al,
@@ -292,6 +296,7 @@ class CrossSec(object):
             if specie in cs.name and ener == cs.energy:
                 return cs
         raise ValueError("%s not found in the data base" % specie)
+
 
 if __name__ == "__main__":
     xmlfile = "vasprun.xml"
