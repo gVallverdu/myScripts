@@ -142,8 +142,13 @@ SUB-COMMANDS
             If [FILENAME] is given, charges are printed into a file of name
             [FILENAME].
 
-        cvg
-            Look at convergence of the calculation
+        cvg [STEP]
+        cvg [OUTCAR] [OSZICAR] [POSCAR]
+            Look at convergence of the calculation. Without any arguments, OUTCAR
+            OSZICAR and POSCAR files are read. If [STEP] is present as un integer,
+            considering the 'local restart' option, OUTCAR_step, OSZICAR_step and
+            CONTCAR_step.vasp are read. Else, you can provide the name of OUTCAR,
+            OSZICAR and POSCAR file in that order.
 
         forces ['FILENAME']
             Read forces acting on eahc ion in file 'FILENAME' and print them.
@@ -446,7 +451,26 @@ def select():
         charges(filename)
 
     elif opt == "cvg":
-        showcvg()
+        if len(sys.argv) == 2:
+            poscar = "POSCAR"
+            oszicar = "OSZICAR"
+            outcar = "OUTCAR"
+        elif len(sys.argv) == 3:
+            try:
+                step = int(sys.argv[2])
+            except ValueError:
+                _die("step must be an integer.", 1)
+            poscar = "CONTCAR_%d.vasp" % step
+            oszicar = "OSZICAR_%d" % step
+            outcar = "OUTCAR_%d" % step
+        elif len(sys.argv) == 5:
+            outcar = sys.argv[2]
+            oszicar = sys.argv[3]
+            poscar = sys.argv[4]
+        else:
+            Colors.cprint("y", "\nWARNING, bad number of arguments. I read default files.\n")
+
+        showcvg(poscar=poscar, oszicar=oszicar, outcar=outcar)
 
     elif opt == "forces":
         outfile = "OUTCAR"
@@ -479,7 +503,7 @@ def select():
                 ny = int(sys.argv[3])
                 nz = int(sys.argv[4])
             except ValueError:
-                _die("nx, ny, nz must be a integers", 1)
+                _die("nx, ny, nz must be integers", 1)
         else:
             print("\nusage : v supercell 2 3 1")
             _die("Incorrect number of arguments", 1)
@@ -1529,19 +1553,27 @@ def readSelectiveDynamics(f="POSCAR"):
     return freeze
 
 
-def showcvg(xmlfile="vasprun.xml"):
-    """ Output graphs for looking at convergence of the calculation """
+def showcvg(outcar="OUTCAR", oszicar="OSZICAR", poscar="POSCAR"):
+    """
+    Output graphs for looking at convergence of the calculation.
+    Take care at the consistency of OUTCAR, OSZICAR and POSCAR files.
+    The POSCAR file is needed to get the constraints. The OSZICAR file is
+    """
 
     # check files
-    for f in ["OSZICAR", "OUTCAR", "POSCAR"]:
+    for f in [outcar, oszicar, poscar]:
         if not os.path.exists(f):
             _die("File %s does not exist" % f, 1)
+    print("I will consider the following files:")
+    print(" * %s" % outcar)
+    print(" * %s" % oszicar)
+    print(" * %s\n" % poscar)
 
     # read data
-    freeze = readSelectiveDynamics("POSCAR")
+    freeze = readSelectiveDynamics(poscar)
     nions = len(freeze)
     nfreeze = [el[0] for el in freeze].count(True)
-    osz = Oszicar("OSZICAR")
+    osz = Oszicar(oszicar)
     nionic_steps = len(osz.ionic_steps)
 
     print(" * N ionic steps: %d" % nionic_steps)
@@ -1567,7 +1599,7 @@ def showcvg(xmlfile="vasprun.xml"):
         e_fr_energy = [it["F"] for it in osz.ionic_steps]
 
         # read forces
-        with open("OUTCAR", "r") as out:
+        with open(outcar, "r") as out:
             fmax = list()
             fave = list()
             fstd = list()
@@ -1845,7 +1877,7 @@ def get_deplacement(xmlfile="vasprun.xml", fs1=None, fs2=None):
         d, j = site1.distance_and_image(site2)
         ligne += "%8.3f" % d
         if (j != np.zeros(3)).all():
-            ligne += "(%2d,%2d,%2d)" % j.tuple
+            ligne += "(%2d,%2d,%2d)" % tuple(j)
 
         print(ligne)
 
