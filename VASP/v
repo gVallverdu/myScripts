@@ -621,8 +621,8 @@ def makeRestart(dirname="restart"):
 
     # KPOINTS
     if os.path.exists(os.path.join(wd, "KPOINTS")):
-        print("cp " + f + " -> " + ndir)
-        shutil.copy(os.path.join(wd, f), ndir)
+        print("cp KPOINTS -> " + ndir)
+        shutil.copy(os.path.join(wd, "KPOINTS"), ndir)
     else:
         Colors.cprint("y", "I did not find a KPOINTS file ! Are you using KSPACING ?")
 
