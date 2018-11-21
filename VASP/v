@@ -142,8 +142,13 @@ SUB-COMMANDS
             If [FILENAME] is given, charges are printed into a file of name
             [FILENAME].
 
-        cvg
-            Look at convergence of the calculation
+        cvg [STEP]
+        cvg [OUTCAR] [OSZICAR] [POSCAR]
+            Look at convergence of the calculation. Without any arguments, OUTCAR
+            OSZICAR and POSCAR files are read. If [STEP] is present as un integer,
+            considering the 'local restart' option, OUTCAR_step, OSZICAR_step and
+            CONTCAR_step.vasp are read. Else, you can provide the name of OUTCAR,
+            OSZICAR and POSCAR file in that order.
 
         forces ['FILENAME']
             Read forces acting on eahc ion in file 'FILENAME' and print them.
@@ -286,7 +291,7 @@ def select():
         if opt in ["h", "help", "-h", "--help"]:
             _die(__doc__)
 
-    # command name
+    # command name
     opt = sys.argv[1].lower()
 
     if opt == "clean":
@@ -446,7 +451,26 @@ def select():
         charges(filename)
 
     elif opt == "cvg":
-        showcvg()
+        if len(sys.argv) == 2:
+            poscar = "POSCAR"
+            oszicar = "OSZICAR"
+            outcar = "OUTCAR"
+        elif len(sys.argv) == 3:
+            try:
+                step = int(sys.argv[2])
+            except ValueError:
+                _die("step must be an integer.", 1)
+            poscar = "CONTCAR_%d.vasp" % step
+            oszicar = "OSZICAR_%d" % step
+            outcar = "OUTCAR_%d" % step
+        elif len(sys.argv) == 5:
+            outcar = sys.argv[2]
+            oszicar = sys.argv[3]
+            poscar = sys.argv[4]
+        else:
+            Colors.cprint("y", "\nWARNING, bad number of arguments. I read default files.\n")
+
+        showcvg(poscar=poscar, oszicar=oszicar, outcar=outcar)
 
     elif opt == "forces":
         outfile = "OUTCAR"
@@ -479,7 +503,7 @@ def select():
                 ny = int(sys.argv[3])
                 nz = int(sys.argv[4])
             except ValueError:
-                _die("nx, ny, nz must be a integers", 1)
+                _die("nx, ny, nz must be integers", 1)
         else:
             print("\nusage : v supercell 2 3 1")
             _die("Incorrect number of arguments", 1)
@@ -580,7 +604,7 @@ def makeRestart(dirname="restart"):
     wd = os.getcwd()
     ndir = os.path.join(wd, dirname)
 
-    # create directory
+    # create directory
     if os.path.exists(ndir):
         if not question(dirname + " directory exists, continue ?"):
             _die()
@@ -588,12 +612,19 @@ def makeRestart(dirname="restart"):
         os.mkdir(ndir)
 
     # copy input files
-    for f in ["INCAR", "POTCAR", "KPOINTS"]:
+    for f in ["INCAR", "POTCAR"]:
         if os.path.exists(os.path.join(wd, f)):
             print("cp " + f + " -> " + ndir)
             shutil.copy(os.path.join(wd, f), ndir)
         else:
             _die("File {0} does not exist".format(f), 1)
+
+    # KPOINTS
+    if os.path.exists(os.path.join(wd, "KPOINTS")):
+        print("cp KPOINTS -> " + ndir)
+        shutil.copy(os.path.join(wd, "KPOINTS"), ndir)
+    else:
+        Colors.cprint("y", "I did not find a KPOINTS file ! Are you using KSPACING ?")
 
     # CONTCAR -> POSCAR
     if os.path.exists(os.path.join(wd, "CONTCAR")):
@@ -643,10 +674,10 @@ def makeSP(dirname="SinglePoint"):
     wd = os.getcwd()
     spdir = os.path.join(wd, dirname)
 
-    # copy files
+    # copy files
     makeRestart(dirname)
 
-    # read INCAR and delete or change lines
+    # read INCAR and delete or change lines
     Colors.cprint("y", "\n# setting up INCAR file")
     incar = open(os.path.join(wd, "INCAR"), "r").readlines()
 
@@ -671,7 +702,7 @@ def makeSP(dirname="SinglePoint"):
     for line in dline:
         incar.remove(line)
 
-    # add some keywords
+    # add some keywords
     if not lorbit:
         incar.append("\nAdded tags\n")
         incar.append("  LORBIT = 11\n")
@@ -698,10 +729,10 @@ def makeSPBader(dirname="SinglePoint", dx=0.03, interac=True):
     wd = os.getcwd()
     spdir = os.path.join(wd, dirname)
 
-    # set up singlePoint calculation
+    # set up singlePoint calculation
     makeSP(dirname)
 
-    # read INCAR and delete or change lines
+    # read INCAR and delete or change lines
     print("\n# Adding bader keywords")
     incar = open(os.path.join(spdir, "INCAR"), "r").readlines()
 
@@ -724,7 +755,7 @@ def makeSPBader(dirname="SinglePoint", dx=0.03, interac=True):
         else:
             _die()
 
-    # read CONTCAR file
+    # read CONTCAR file
     poscar = open(os.path.join(spdir, "POSCAR"), "r").readlines()
     scale = float(poscar[1])
     veca = [scale * float(x) for x in poscar[2].split()[0:3]]
@@ -734,7 +765,7 @@ def makeSPBader(dirname="SinglePoint", dx=0.03, interac=True):
     b = sqrt(vecb[0]**2 + vecb[1]**2 + vecb[2]**2)
     c = sqrt(vecc[0]**2 + vecc[1]**2 + vecc[2]**2)
 
-    # bader grid
+    # bader grid
     if interac and not question("dx = %f \t accept ?" % dx):
         print("Enter a new dx value")
         dx = float(input("dx = "))
@@ -749,7 +780,7 @@ def makeSPBader(dirname="SinglePoint", dx=0.03, interac=True):
     print("b = %8.3f      NGYF = %d" % (b, ngyf))
     print("c = %8.3f      NGZF = %d" % (c, ngzf))
 
-    # add bader keywords
+    # add bader keywords
     incar.append("\nBader\n")
     incar.append("  LAECHG = True\n")
     incar.append("  NGXF = %d\n" % ngxf)
@@ -828,7 +859,7 @@ def make_kpoints(fstruct="POSCAR", ndiv=20):
     # Compute first brillouin zone
     ibz = HighSymmKpath(struct)
     print("ibz type     : {0}".format(ibz.name))
-    plot_brillouin_zone_from_kpath(ibz,savefig="path.png")
+    plot_brillouin_zone_from_kpath(ibz, savefig="path.png")
 
     # print specific kpoints in the first brillouin zone
     print("\nList of high symmetry k-points:")
@@ -923,7 +954,7 @@ def coreLevel():
     symbol = [specie.symbol for specie in mg.Structure.from_file("POSCAR").species]
 
     if len(sys.argv) == 2:
-        # try to read from INCAR
+        # try to read from INCAR
         incar = Incar.from_file("INCAR")
         iat = incar["CLNT"]
 
@@ -956,7 +987,7 @@ def coreLevel():
         ao = sys.argv[3]
 
     # print core state energy
-    if  ao in cl[iat - 1]:
+    if ao in cl[iat - 1]:
         print("atom %d -> %2s_%2s = %f eV" % (iat, symbol[iat - 1], ao,
                                               cl[iat - 1][ao][-1]))
     else:
@@ -971,7 +1002,7 @@ def plot_total_dos(xmlfile="vasprun.xml", tofile=False):
     if not os.path.exists(xmlfile):
         _die("File %s does not exist" % xmlfile, 1)
 
-    # read
+    # read
     run = Vasprun(xmlfile, parse_eigen=False)
     print("gap = %12.6f" % run.complete_dos.get_gap())
 
@@ -991,7 +1022,7 @@ def plot_total_dos(xmlfile="vasprun.xml", tofile=False):
             f.write(lines)
 
     else:
-        # plot
+        # plot
         font = {'family': 'serif', 'size': 20}
         plt.rc('font', **font)
         plt.figure(figsize=(11.69, 8.27))  # A4
@@ -1002,7 +1033,7 @@ def plot_total_dos(xmlfile="vasprun.xml", tofile=False):
             plt.plot(run.tdos.energies - run.efermi, -run.tdos.densities[Spin.down],
                      "b-", label="Spin down")
 
-        # set up figure
+        # set up figure
         plt.title("Density of states of " +
                   run.initial_structure.composition.reduced_formula)
         plt.xlabel(r"$E - E_{f}$   /   eV")
@@ -1028,7 +1059,7 @@ def plot_proj_dos(xmlfile="vasprun.xml", tofile=False):
     if not os.path.exists(xmlfile):
         _die("File %s does not exist" % xmlfile, 1)
 
-    # read
+    # read
     run = Vasprun(xmlfile, parse_eigen=False)
     dos = run.complete_dos
     print("gap = %12.6f" % dos.get_gap())
@@ -1074,7 +1105,7 @@ def plot_proj_dos(xmlfile="vasprun.xml", tofile=False):
                 f.write(lines)
 
     else:
-        # plot
+        # plot
         font = {'family': 'serif', 'size': 20}
         plt.rc('font', **font)
         plt.figure(figsize=(11.69, 8.27))  # A4
@@ -1131,7 +1162,7 @@ def plot_at_dos(iat, xmlfile="vasprun.xml"):
     if not os.path.exists(xmlfile):
         _die("File %s does not exist" % xmlfile, 1)
 
-    # read
+    # read
     run = Vasprun(xmlfile, parse_eigen=False)
     dos = run.complete_dos
     site = run.initial_structure[iat - 1]
@@ -1141,7 +1172,7 @@ def plot_at_dos(iat, xmlfile="vasprun.xml"):
 
     oatypes = (OrbitalType.s, OrbitalType.p, OrbitalType.d)
 
-    # print file
+    # print file
     lines = "# Element  : %s_%d\n" % (site.specie.symbol, iat)
     lines += "# column  1: E - E_fermi (eV)\n"
     nc = 1
@@ -1157,7 +1188,7 @@ def plot_at_dos(iat, xmlfile="vasprun.xml"):
             nc += 1
             lines += "# column %2d: DOS projected on %s\n" % (nc, orb)
 
-        # data
+        # data
         for i in range(len(dos.energies)):
             lines += "%12.7f " % (dos.energies[i] - dos.efermi)
             lines += "%12.7f " % sitedos.densities[Spin.up][i]
@@ -1186,7 +1217,7 @@ def plot_at_dos(iat, xmlfile="vasprun.xml"):
             nc += 1
             lines += "# column %2d: DOS down projected on %s\n" % (nc, orb)
 
-        # data
+        # data
         for i in range(len(dos.energies)):
             lines += "%12.7f " % (dos.energies[i] - dos.efermi)
             lines += "%12.7f " % sitedos.densities[Spin.up][i]
@@ -1254,12 +1285,12 @@ def get_mag(full=False, plotThreshold=.1):
         if not os.path.exists(f):
             _die("File %s is needed and does not exist" % f, 1)
 
-    # read
+    # read
     outcar = Outcar("OUTCAR")
     if len(outcar.magnetization) == 0:
         _die("Magnetization not found in OUTCAR file. Check INCAR", 1)
 
-    # print
+    # print
     p = Poscar.from_file("POSCAR")
     print("\n# " + dashedLine)
     print("# magnetization for each atom")
@@ -1312,7 +1343,7 @@ def get_mag(full=False, plotThreshold=.1):
         ax = plt.subplot(111)
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * .9, box.height])
-        #plt.xlim((-.5, nstep + -.5))
+        # plt.xlim((-.5, nstep + -.5))
         plt.grid()
         plt.xlabel("Ionic step")
         plt.ylabel("Magnetization")
@@ -1370,8 +1401,8 @@ def charges(filename=None):
 
     nat = len(atomNames)
 
-    # 
-    # read potcar
+    #  
+    # read potcar
     #
     if os.path.exists("POTCAR"):
         potcar = Potcar.from_file("POTCAR")
@@ -1522,19 +1553,27 @@ def readSelectiveDynamics(f="POSCAR"):
     return freeze
 
 
-def showcvg(xmlfile="vasprun.xml"):
-    """ Output graphs for looking at convergence of the calculation """
+def showcvg(outcar="OUTCAR", oszicar="OSZICAR", poscar="POSCAR"):
+    """
+    Output graphs for looking at convergence of the calculation.
+    Take care at the consistency of OUTCAR, OSZICAR and POSCAR files.
+    The POSCAR file is needed to get the constraints. The OSZICAR file is
+    """
 
-    # check files
-    for f in ["OSZICAR", "OUTCAR", "POSCAR"]:
+    # check files
+    for f in [outcar, oszicar, poscar]:
         if not os.path.exists(f):
             _die("File %s does not exist" % f, 1)
+    print("I will consider the following files:")
+    print(" * %s" % outcar)
+    print(" * %s" % oszicar)
+    print(" * %s\n" % poscar)
 
     # read data
-    freeze = readSelectiveDynamics("POSCAR")
+    freeze = readSelectiveDynamics(poscar)
     nions = len(freeze)
     nfreeze = [el[0] for el in freeze].count(True)
-    osz = Oszicar("OSZICAR")
+    osz = Oszicar(oszicar)
     nionic_steps = len(osz.ionic_steps)
 
     print(" * N ionic steps: %d" % nionic_steps)
@@ -1559,8 +1598,8 @@ def showcvg(xmlfile="vasprun.xml"):
         # ionic step energies
         e_fr_energy = [it["F"] for it in osz.ionic_steps]
 
-        # read forces
-        with open("OUTCAR", "r") as out:
+        # read forces
+        with open(outcar, "r") as out:
             fmax = list()
             fave = list()
             fstd = list()
@@ -1657,7 +1696,7 @@ def showcvg(xmlfile="vasprun.xml"):
         graph3.plot(fstd, "c", label="std")
         if nfreeze != 0:
             graph3.plot(fcstmax, "b--", label="max frozen")
-            #graph3.plot(fcstmin, "b--")
+            # graph3.plot(fcstmin, "b--")
         graph3.legend(ncol=2, fancybox=True, shadow=True, loc="upper right",
                       prop={"size": 14})
         graph3.set_title("Forces on ions")
@@ -1691,7 +1730,7 @@ def get_forces(outfile):
     else:
         _die("\nError, I need an INCAR file", 1)
 
-    # read last forces on OUTCAR
+    # read last forces on OUTCAR
     with open(outfile, "r") as out:
         line = out.readline()
         while line != "":
@@ -1838,7 +1877,7 @@ def get_deplacement(xmlfile="vasprun.xml", fs1=None, fs2=None):
         d, j = site1.distance_and_image(site2)
         ligne += "%8.3f" % d
         if (j != np.zeros(3)).all():
-            ligne += "(%2d,%2d,%2d)" % j.tuple
+            ligne += "(%2d,%2d,%2d)" % tuple(j)
 
         print(ligne)
 
@@ -1857,7 +1896,7 @@ def make_supercell(nx=1, ny=1, nz=1):
         Print structure into a POSCAR file
     """
 
-    # file to read
+    # file to read
     if os.path.exists("CONTCAR"):
         filename = "CONTCAR"
     elif os.path.exists("POSCAR"):
@@ -2008,6 +2047,7 @@ class HumanSize(object):
             size = "%.0f o" % taille
 
         return size
+
 
 if __name__ == "__main__":
     check()
