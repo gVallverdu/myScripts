@@ -1038,7 +1038,7 @@ def plot_total_dos(xmlfile="vasprun.xml", tofile=False):
                   run.initial_structure.composition.reduced_formula)
         plt.xlabel(r"$E - E_{f}$   /   eV")
         plt.ylabel("Density of states")
-        plt.grid()
+        plt.grid(True)
         ymin, ymax = plt.ylim()
         plt.vlines(0, ymin, ymax, color="k", lw=1, linestyle="--")
         if run.is_spin:
@@ -1139,7 +1139,7 @@ def plot_proj_dos(xmlfile="vasprun.xml", tofile=False):
             plt.vlines(0, ymin, ymax, color="k", linestyle="-")
             plt.ylim(ymin, ymax)
             plt.ylabel("Element : " + el.symbol)
-            plt.grid()
+            plt.grid(True)
             plt.legend(prop={"size": "18"})
 
         # plt.subplots_adjust(hspace=0.)
@@ -1344,7 +1344,7 @@ def get_mag(full=False, plotThreshold=.1):
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * .9, box.height])
         # plt.xlim((-.5, nstep + -.5))
-        plt.grid()
+        plt.grid(True)
         plt.xlabel("Ionic step")
         plt.ylabel("Magnetization")
         for iat in range(Natoms):
@@ -1576,24 +1576,27 @@ def showcvg(outcar="OUTCAR", oszicar="OSZICAR", poscar="POSCAR"):
     osz = Oszicar(oszicar)
     nionic_steps = len(osz.ionic_steps)
 
-    print(" * N ionic steps: %d" % nionic_steps)
-    print(" * N ions       : %d" % nions)
-    print(" * N ions frozen: %d" % nfreeze)
+    if nionic_steps <= 1:
+        print("SCF Convergence only")
+        print(" * SCF cycles: %d" % len(osz.electronic_steps[0]))
 
-    if nionic_steps == 1:
         # electronic convergence only
         energy = [it["E"] for it in osz.electronic_steps[0]]
 
         font = {'family': 'serif', 'size': 18}
         plt.rc('font', **font)
         plt.figure(figsize=(11.69, 8.27))  # A4
-        plt.plot(energy)
+        plt.plot(energy, "o--")
+        plt.grid(True)
         plt.title("SCF convergence")
         plt.xlabel("Electronic step")
         plt.ylabel("Energie   /   eV")
 
     else:
         # ionic convergence
+        print(" * N ionic steps: %d" % nionic_steps)
+        print(" * N ions       : %d" % nions)
+        print(" * N ions frozen: %d" % nfreeze)
 
         # ionic step energies
         e_fr_energy = [it["F"] for it in osz.ionic_steps]
