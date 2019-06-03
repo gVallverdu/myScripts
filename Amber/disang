@@ -1,0 +1,17 @@
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+# this file contains the bias potential
+
+# write a &rst namelist for each coordinate on which you want
+# to put a restraint
+# RK2 is the force constant between max1 and min1
+# RK3 is the force constant between min2 and max2
+# the force constant is zero elsewhere
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+# biais on dihASP = C-CA-CB-CG =-30.0
+&rst
+ IAT = iat1, iat2, iat3, iat4,
+ R1 = max1, R2 = min1, R3 = min2, R4 = max2,
+ RK2 = 10.0, RK3 = 10.0,
+/
+
