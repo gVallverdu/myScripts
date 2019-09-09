@@ -1,0 +1,48 @@
+# equilibration ( N , V , T ) Warm the simulation box slowly
+# delete all lines begining with #
+#
+#title
+Equilibration a volume constant
+#General minimization and dynamics parameters
+&cntrl
+# General flags describing the calculation
+ NMROPT = 1,
+# Nature and format of the input
+ IREST = 0, NTX = 1,
+# Nature and format of the output
+ NTPR = 1000, NTWR = 1000, NTWX = 1000,
+ IWRAP = 1,
+# Frozen or restrained atoms
+ NTR = 1, RESTRAINT_WT = 5.0,
+ RESTRAINTMASK = ":1-227",
+# Molecular Dynamics
+ NSTLIM = 50000, DT = 0.002, T = 0.0,
+# Temperature regulation
+ TEMPI = 100.0, TEMP0 = 300.0, IG = 220908,
+ NTT = 3, GAMMA_LN = 1.0,
+# Pressure regulation
+ NTP = 0,
+# Shake bond length constraints
+ NTC = 2,
+# Potential function parameters
+ NTF = 2, NTB = 1, CUT = 10.0,
+/
+#
+# Weight change information
+&wt
+# defines quantity being varied
+ TYPE = 'TEMP0',
+# This change is applied over steps ISTEP1 throught ISTEP2
+ ISTEP1 = 1, ISTEP2 = 20000,
+# Value of the change corresponding to ISTEP1 and ISTEP2
+ VALUE1 = 100, VALUE2 = 300,
+# The change is done continuously
+ IINC = 0,
+# The change is linearly interpolated from VALUE1 to VALUE2
+ IMULT = 0,
+# end
+/
+&wt
+ type='END'
+/
+

@@ -1,0 +1,24 @@
+* * * * * * * * * * * * * * * * * * * * *
+REMARK : do not forget the disang file
+* * * * * * * * * * * * * * * * * * * * *
+
+Simulation biaisée à pression constante
+&cntrl
+ NMROPT = 1
+ IREST = 1, NTX = 5,
+ NTPR = 1000, NTWR = -10000, NTWX = 1000,
+ IWRAP = 1, NTWPRT = 4029,
+ NTR = 0,
+ NSTLIM = 500000, DT = 0.002,
+ TEMPI = 300.0, TEMP0 = 300.0, IG = 311008,
+ NTT = 3, GAMMA_LN = 1.0,
+ NTP = 1, TAUP = 2.0, PRES0 = 1.0,
+ NTC = 2,
+ NTF = 2, NTB = 2, CUT = 10.0,
+/
+&wt
+ TYPE = 'DUMPFREQ', ISTEP1 = 50,
+/
+&wt TYPE = 'END' /
+DISANG=disang
+DUMPAVE=x_vs_time

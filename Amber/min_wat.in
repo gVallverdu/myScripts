@@ -1,0 +1,20 @@
+# AMBER : Water Minimization
+# delete all lines begining with #
+#
+#title
+minimization of water molecues
+#General minimization and dynamics parameters
+&cntrl
+# General flags describing the calculation
+ IMIN = 1,
+# Nature and format of the output
+ NTPR = 100,
+# Frozen or restrained atoms
+ NTR = 1, RESTRAINT_WT = 5000.0,
+ RESTRAINTMASK = ":1-227",
+# Energy minimization 
+ MAXCYC = 4000, NCYC = 1000,
+# Potential function parameters
+ NTB = 1, CUT = 10.0,
+/
+

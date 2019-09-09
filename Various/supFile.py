@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding=utf-8 -*-
 
 """
@@ -105,7 +105,7 @@ def delFile(filenames):
     print("### WARNING, ALL ABOVE FILES WILL BE DELETE ###")
     answer = ""
     while answer != "y":
-        answer = raw_input(" ARE YOU SURE ? (y/n) : ")
+        answer = input(" ARE YOU SURE ? (y/n) : ")
         if answer == "n":
             print("nothing was deleted")
             exit(0)

@@ -1,0 +1,27 @@
+# AMBER : Simulation ( N , P , T )
+# delete all lines begining with #
+#
+#title
+Simulation ( N , P , T )
+#General minimization and dynamics parameters
+&cntrl
+# Nature and format of the input
+ IREST = 1, NTX = 5,
+# Nature and format of the output
+ NTPR = 1000, NTWR = 1000, NTWX = 1000,
+ IWRAP = 1,
+# Frozen or restrained atoms
+ NTR = 0,
+# Molecular Dynamics
+ NSTLIM = 250000, DT = 0.002,
+# Temperature regulation
+ TEMPI = 300.0, TEMP0 = 300.0, IG = 300908,
+ NTT = 3, GAMMA_LN = 1.0,
+# Pressure regulation
+ NTP = 1, TAUP = 2.0, PRES0 = 1.0,
+# Shake bond length constraints
+ NTC = 2,
+# Potential function parameters
+ NTF = 2, NTB = 2, CUT = 10.0,
+/
+

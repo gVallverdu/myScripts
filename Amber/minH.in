@@ -1,0 +1,22 @@
+# AMBER : Minimization of hydrogen atoms
+# delete all lines begining with #
+#
+#title
+minimisation des hydrogenes 
+#General minimization and dynamics parameters
+&cntrl
+# General flags describing the calculation
+ IMIN = 1,
+# Nature and format of the output
+ NTPR = 100,
+# Frozen or restrained atoms
+ NTR = 1, RESTRAINT_WT = 5000.0,
+ RESTRAINTMASK = ":* & !@H=",
+# mask = all residues AND NOT(all atom name starting with H)
+# thus mask = all atoms except hydrogen
+#
+# Energy minimization 
+ MAXCYC = 4000, NCYC = 1000,
+# Potential function parameters
+ NTB = 1, CUT = 10.0,
+/
