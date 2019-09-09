@@ -235,6 +235,11 @@ class CrossSec(object):
     Spectroscopy and Related Phenomena, 8 (1976) 129-137).
     """
 
+    H_Mg = CrossSecSpecie(Kalpha.Mg, "H_Mg", 0.0002,
+                             comment="H, 1s1 configuration, Mg Kalpha")
+    H_Al = CrossSecSpecie(Kalpha.Al, "H_Al", 0.0002,
+                             comment="H, 1s1 configuration, Al Kalpha")
+
     # second row
     Li_p_Mg = CrossSecSpecie(Kalpha.Mg, "Li_p_Mg", 0.0593,
                              comment="Li+, 1s2 configuration, Mg Kalpha")
@@ -268,6 +273,10 @@ class CrossSec(object):
                           comment="S: 1s2 2s2 2p6 3s2 3p3 configuration, Al Kalpha")
 
     # fourth row
+    Co_Mg = CrossSecSpecie(Kalpha.Mg, "Co_Mg", 0.0451, 0, 0, 0.1220, 0.1787,
+                           comment="Co: 4s2 3d7, Mg Kalpha, 0 for p cros section")
+    Co_Al = CrossSecSpecie(Kalpha.Al, "Co_Al", 0.0529, 0, 0, 0.1082, 0.1582,
+                           comment="Co: 4s2 3d7, Al Kalpha, 0 for p cros section")
     Mn_Mg = CrossSecSpecie(Kalpha.Mg, "Mn_Mg", 0.0398, 0, 0, 0.0484, 0.0711,
                            comment="Mn: 4s2 3d5, Mg Kalpha, 0 for p cros section")
     Mn_Al = CrossSecSpecie(Kalpha.Al, "Mn_Al", 0.0464, 0, 0, 0.0424, 0.0622,
