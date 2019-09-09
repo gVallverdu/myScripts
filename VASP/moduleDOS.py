@@ -1,12 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*-coding:utf-8 -*-
 
 """
 Apply scofield cross sections to a DOS
 Journal of Electron Spectroscopy and Related Phenomena, 8 (1976) 129-137)
 """
-
-from __future__ import division, print_function
 
 import numpy as np
 import matplotlib.pyplot as plt
