@@ -49,9 +49,25 @@ chgsplit.f90
     containing only the spin up density and one other containing only spin down
     density.
 
-makeCL.py
-    Python script in order to setup a series of corelevel calculations.
+makeCL.py / readCL.py
+    Python scripts in order to setup a series of corelevel calculations and read the
+    results.
 
 bandstructure.py
     Python script which relies on pymatgen in order to plot band structure
     diagram.
+
+kpoints.job / ana_kpoints.py (and kspacing)
+    Bash and python scripts in order to run VASP calculations for a series of k-points
+    grid using either a cubic grid or using KSPACING VASP keywords. The python script
+    export the results.
+
+encut.job
+    Bash script to run a series of VASP calculations for various ENCUT values.
+
+runU.py / readU.py
+    Python scripts in order to run and extract data from a series of VASP calculations for
+    various U values (DFT+U formalism).
+
+
+
