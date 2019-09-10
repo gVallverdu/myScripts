@@ -1,5 +1,36 @@
 #!/bin/bash
 
+#SBATCH --account=uppa
+#SBATCH --partition=compute
+
+##SBATCH --mail-type=END
+##SBATCH --mail-user=germain.vallverdu@univ-pau.fr
+
+#SBATCH --time=0-02:00:00
+
+#SBATCH --ntasks=4
+#SBATCH --cpus-per-task=1
+
+# dossier de travail (securite)
+source /etc/profile.d/modules.sh
+module purge
+module load vasp/5.4.4
+module list
+
+# le chemin vers vasp est defini dans le module
+echo "vasp : `which vasp`"
+echo "------------------------------------------------------------"
+echo "SLURM_JOB_NAME       =" $SLURM_JOB_NAME
+echo "SLURM_JOBID          =" $SLURM_JOBID
+echo "SLURM_NODELIST       = "$SLURM_NODELIST
+echo ""
+echo "SLURM_NNODES         =" $SLURM_NNODES
+echo "SLURM_NTASKS         =" $SLURM_NTASKS
+echo "SLURM_TASKS_PER_NODE =" $SLURM_TASKS_PER_NODE
+echo "SLURM_CPUS_PER_TASK  =" $SLURM_CPUS_PER_TASK
+echo "SLURM_NPROCS         =" $SLURM_NPROCS
+echo "------------------------------------------------------------"
+
 # script pour l'optimisation du cut-off
 #
 # Fichier INCAR
@@ -22,35 +53,25 @@
 #
 # ------------------------------------------------------------------------------
 
-# options SGE
-#$ -q ecpsmp4.q
-#$ -pe pesmp 4
-
-# ------------------------------------------------------------------------------
-
-# dossier de travail (securite)
-workdir=$SGE_O_WORKDIR
-echo "------------------------------------------------------------"
-echo "working directory : " $workdir
-echo "cd $workdir"
-cd $workdir
-
-# chargement des libs
-source /etc/profile.d/modules.sh
-module purge
-module load vasp/5.3.2
-module list
-
-# le chemin vers vasp est defini dans le module
-echo "vasp : `which vasp`"
-echo "------------------------------------------------------------"
-
 # KPOINTS
 echo "kpts grille : 1 point"  > KPOINTS
 echo "0"                     >> KPOINTS
 echo "Gamma"                 >> KPOINTS
 echo " 1 1 1 "               >> KPOINTS
 echo " 0 0 0"                >> KPOINTS
+
+# INCAR
+echo "PREC = Accurate"  > INCAR
+echo "EDIFF = 1e-6"    >> INCAR
+echo "ENCUT = 200"     >> INCAR
+echo "ISTART = 0"      >> INCAR
+echo "LWAVE = False"   >> INCAR
+echo "LCHARG = False"  >> INCAR
+echo "NSW = 0"         >> INCAR
+echo "ISMEAR = 0"      >> INCAR
+echo "SIGMA = 0.05"    >> INCAR
+
+cp -v INCAR INCAR_origine
 
 # declaration des variables
 declare -a encut energie
@@ -83,7 +104,7 @@ for i in $(seq 1 $npts)
         echo ""
 
         # execution de VASP
-        time $MPI_RUN -np $NSLOTS vasp
+        time $MPI_RUN vasp
 
         # lecture de l'energie
         set `tail -n1 OSZICAR`
@@ -102,8 +123,10 @@ echo ""
 echo " ======================================== "
 echo " Nombre de valeurs : " $npts
 echo " ======================================== "
+echo "# encut (ev) Energy (eV)" > encut.dat
 for i in $(seq 1 $npts)
     do
         echo ${encut[$i]} ${energie[$i]}
+        echo ${encut[$i]} ${energie[$i]} >> encut.dat
     done
 
