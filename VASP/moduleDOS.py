@@ -290,9 +290,10 @@ class CrossSec(object):
     Cu_Al = CrossSecSpecie(Kalpha.Al, "Cu_Al", 0.0221, 0, 0, 0.240, 0.349,
                            comment="Cu: 4s1 3d10, Al Kalpha, 0 for p cros section")
 
-    all_data = (Li_p_Mg, Li_p_Al, N_Mg, N_Al, O_Mg, O_Al,
+    all_data = (H_Mg, H_Al,
+                Li_p_Mg, Li_p_Al, N_Mg, N_Al, O_Mg, O_Al,
                 Na_p_Mg, Na_p_Al, P_Mg, P_Al, S_Mg, S_Al,
-                Mn_Mg, Mn_Al, Fe_Mg, Fe_Al, Cu_Mg, Cu_Al)
+                Mn_Mg, Mn_Al, Fe_Mg, Fe_Al, Co_Mg, Co_Al, Cu_Mg, Cu_Al)
 
     @staticmethod
     def from_string(specie, ener=Kalpha.Al):
