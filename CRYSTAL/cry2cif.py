@@ -129,14 +129,14 @@ def cry2cif(filename, to="cif", center=False, sortx=False, sortz=False,
     if cryout.slab:
         frac_coords = structure.frac_coords
         frac_coords[:, 2] *= structure.lattice.c / c_dum
-        matrix = structure.lattice.matrix
+        matrix = structure.lattice.matrix.copy()
         matrix[2, 2] = c_dum
         structure = Structure(Lattice(matrix), structure.species, frac_coords)
     if cryout.nanotube:
         frac_coords = structure.frac_coords
         frac_coords[:, 1] *= structure.lattice.c / c_dum
         frac_coords[:, 2] *= structure.lattice.b / b_dum
-        matrix = structure.lattice.matrix
+        matrix = structure.lattice.matrix.copy()
         matrix[1, 1] = b_dum
         matrix[2, 2] = c_dum
         structure = Structure(Lattice(matrix), structure.species, frac_coords)
@@ -165,7 +165,7 @@ def cry2cif(filename, to="cif", center=False, sortx=False, sortz=False,
     axes = {2: "z", 0: "x"}
     if sortz or sortx:
         print("\nSort atoms along %s" % axes[isort])
-        data = zip(structure.species, structure.coords)
+        data = zip(structure.species, structure.frac_coords)
         data = sorted(data, key=lambda d: d[-1][isort], reverse=True)
 
         species = [d[0] for d in data]
