@@ -1,0 +1,83 @@
+#!/bin/bash
+
+#SBATCH --account=uppa
+#SBATCH --partition=compute
+
+##SBATCH --mail-type=END
+##SBATCH --mail-user=germain.vallverdu@univ-pau.fr
+
+#SBATCH --time=0-12:00:00
+
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=4
+##SBATCH --ntasks=4
+#SBATCH --cpus-per-task=1
+
+# dossier de travail (securite)
+source /etc/profile.d/modules.sh
+module purge
+module load vasp/5.4.4
+module list
+
+# le chemin vers vasp est defini dans le module
+echo "vasp : `which vasp`"
+echo "------------------------------------------------------------"
+echo "SLURM_JOB_NAME       =" $SLURM_JOB_NAME
+echo "SLURM_JOBID          =" $SLURM_JOBID
+echo "SLURM_NODELIST       = "$SLURM_NODELIST
+echo ""
+echo "SLURM_NNODES         =" $SLURM_NNODES
+echo "SLURM_NTASKS         =" $SLURM_NTASKS
+echo "SLURM_TASKS_PER_NODE =" $SLURM_TASKS_PER_NODE
+echo "SLURM_CPUS_PER_TASK  =" $SLURM_CPUS_PER_TASK
+echo "SLURM_NPROCS         =" $SLURM_NPROCS
+echo "------------------------------------------------------------"
+
+# script pour l'optimisation des kpoints
+
+# INCAR
+echo "PREC = Accurate"  > INCAR
+echo "EDIFF = 1e-6"    >> INCAR
+echo "ENCUT = 600"     >> INCAR
+echo "NELMIN = 4"      >> INCAR
+echo "ISTART = 0"      >> INCAR
+echo "LWAVE = False"   >> INCAR
+echo "LCHARG = False"  >> INCAR
+echo "NSW = 30"        >> INCAR
+echo "IBRION = 2"      >> INCAR
+echo "ISIF = 3"        >> INCAR
+echo "EDIFFG = -0.01"  >> INCAR
+echo "ISMEAR = 0"      >> INCAR
+echo "SIGMA = 0.05"    >> INCAR
+
+# boucle sur i = 1 a 12
+for i in $(seq 1 12)
+    do
+        # ecriture du fichier KPOINTS
+        echo "k points"  >  KPOINTS
+        echo " 0"        >> KPOINTS
+        echo "Gamma"     >> KPOINTS
+        echo " $i $i $i" >> KPOINTS
+        echo " 0 0 0"    >> KPOINTS
+
+        # affiche le fichier KPOINTS
+        echo -e "\n ================================================================"
+        echo " KPOINTS file"
+        echo  " ================================================================"
+        cat KPOINTS
+        echo -e " ================================================================\n"
+
+        # execution de vasp
+        time $MPI_RUN vasp
+
+        # sauvegarde des fichiers importants
+        echo ""
+        cp -v OSZICAR OSZICAR_$i
+        cp -v CONTCAR CONTCAR_$i
+
+        # supprime les fichiers de fonction d'onde (WAVECAR) 
+        # et de densite (CHGCAR) pour eviter un restart
+        echo ""
+        rm -v WAVECAR CHGCAR
+
+    done
