@@ -1680,6 +1680,15 @@ def showcvg(outcar="OUTCAR", oszicar="OSZICAR", poscar="POSCAR"):
 
         # electronic convergence only
         energy = [it["E"] for it in osz.electronic_steps[0]]
+        print("\n%5s %14s %14s" % ("step", "Energy (eV)", "Delta E (eV)"))
+        print("-" * (5 + 1 + 14 + 1 + 14))
+        for step, ene in enumerate(energy, 1):
+            if step == 1:
+                previous = 0
+            else:
+                previous = energy[step - 2]
+            
+            print("%5d %14.6f %14.6f" % (step, ene, ene - previous))
 
         font = {'family': 'serif', 'size': 18}
         plt.rc('font', **font)
@@ -1761,6 +1770,11 @@ def showcvg(outcar="OUTCAR", oszicar="OSZICAR", poscar="POSCAR"):
         delta_F = list()
         for i in range(nionic_steps - 1):
             delta_F.append(fabs(e_fr_energy[i + 1] - e_fr_energy[i]))
+
+        print("\n%5s %14s %14s %14s %14s" % ("step", "Energy (eV)", "f_max (eV/A)", "<f> (eV/A)", "std_f (eV/A)"))
+        print("-" * (5 + 14 + 42 + 5))
+        for step, (ene, fmaxi, favei, fstdi) in enumerate(zip(e_fr_energy, fmax, fave, fstd), 1):
+            print("%5d %14.6f %14.6f %14.6f %14.6f" % (step, ene, fmaxi, favei, fstdi))
 
         font = {'family': 'sans', 'size': 18}
         plt.rc('font', **font)
