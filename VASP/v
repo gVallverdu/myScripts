@@ -142,6 +142,14 @@ SUB-COMMANDS
             If [FILENAME] is given, charges are printed into a file of name
             [FILENAME].
 
+        bmag [FILENAME]
+            After a bader calculation on an up - down density (spin density)
+            `http://http://theory.cm.utexas.edu/henkelman/code/bader/`_
+            Read atomic populations into ACF.dat file that correspond to the
+            atomic magnetic moments number of up minus number of down electrons.
+            If [FILENAME] is given, charges are printed into a file of name
+            [FILENAME]
+
         cvg [STEP]
         cvg [OUTCAR] [OSZICAR] [POSCAR]
             Look at convergence of the calculation. Without any arguments, OUTCAR
@@ -260,7 +268,7 @@ def check():
 
     options = ["h", "help", "-h", "--help",
                "clean", "sp", "spb", "restart", "purge", "lr", "makekpts",
-               "cell", "cl", "chgsum", "charges", "cvg",
+               "cell", "cl", "chgsum", "charges", "cvg", "bmag",
                "tdos", "pdos", "mag", "dep", "atdos", "bands",
                "forces", "supercell", "neighbors", "allneighbors"]
 
@@ -449,6 +457,13 @@ def select():
         else:
             filename = None
         charges(filename)
+
+    elif opt == "bmag":
+        if len(sys.argv) == 3:
+            filename = sys.argv[2]
+        else:
+            filename = None
+        bader_magmom(filename)
 
     elif opt == "cvg":
         if len(sys.argv) == 2:
@@ -1463,7 +1478,7 @@ def charges(filename=None):
         avePop[el.symbol] = 0.
         av2Charge[el.symbol] = 0.
 
-    lines += "Composition : {0}\n".format(struct.composition.reduced_formula)
+    lines += "\nComposition : {0}\n".format(struct.composition.reduced_formula)
 
     nelec = 0
     for iat in range(nat):
@@ -1511,6 +1526,89 @@ def charges(filename=None):
 
     Colors.cprint(color, "Number of valence electrons          = %10.4f" % nelec)
     Colors.cprint(color, "Number of computed valence electrons = %10.4f" % bader_nelec)
+
+def bader_magmom(filename=None):
+    """
+    Extract magnetic moment from a Bader caclculations done with the bader
+    program of the University of Texas at Austin :
+
+    http://theory.cm.utexas.edu/bader/
+
+    Requirements :
+        * a ACF.dat file (bader output)
+        * a POSCAR/CONTCAR file of the structure (read atom names).
+        * a POTCAR file (read valence electron)
+    """
+
+    #
+    # read atom names
+    #
+    if os.path.exists("POSCAR"):
+        struct = mg.Structure.from_file("POSCAR")
+        atomNames = [el.symbol for el in struct.species]
+
+    elif os.path.exists("CONTCAR"):
+        struct = mg.Structure.from_file("CONTCAR")
+        atomNames = [el.symbol for el in struct.species]
+
+    else:
+        _die("ERROR: need a POSCAR/CONTCAR file to get atom names", 1)
+
+    nat = len(struct)
+
+    #
+    # read population from ACF.dat file
+    #
+    mag_patt = re.compile("^\s*\d+\s*([+-]?\d+\.\d+)")
+    nelec_patt = re.compile("^\s*NUMBER OF ELECTRONS:\s*(\d+.\d+)")
+    if os.path.exists("ACF.dat"):
+        with open("ACF.dat", "r") as acf:
+            magnetization = list()
+            for line in acf:
+                if mag_patt.match(line):
+                    magnetization.append(float(float_patt.findall(line)[3]))
+                elif nelec_patt.match(line):
+                    m = nelec_patt.match(line)
+                    bader_nelec = float(m.group(1))
+        if len(magnetization) != nat:
+            _die("Error, number of atom in ACF.dat not consistent", 1)
+    else:
+        _die("ERROR: file ACF.dat not found", 1)
+
+    #
+    # output
+    #
+    lines = "\n   i  name    magmom\n"
+    lines += dashedLine + "\n"
+    for iat, magmom in enumerate(magnetization):
+        lines += "%4d %4s %10.4f\n" % (iat + 1, struct.species[iat].symbol, magmom)
+    lines += dashedLine + "\n"
+
+    #
+    # average charges
+    #
+    at_magmom = {
+        el1: [magnetization[iat] for iat, el2 in enumerate(struct.species) if el2 == el1]
+        for el1 in struct.composition.elements
+    }
+    ave_magmom = {k: np.mean(v) for k, v in at_magmom.items()}
+    std_magmom = {k: np.std(v) for k, v in at_magmom.items()}
+    magtot = np.sum(magnetization)
+
+    lines += "\nComposition : {0}\n".format(struct.composition.reduced_formula)
+
+    lines += "Averages :\n"
+    lines += " name    average magmom\n"
+    lines += dashedLine + "\n"
+    for el in struct.composition.elements:
+        lines += "%4s %10.4f +/- %7.4f\n" % (el.symbol, ave_magmom[el], std_magmom[el]) 
+    lines += dashedLine + "\n"
+
+    if not filename:
+        print(lines)
+    else:
+        with open(filename, "w") as fout:
+            fout.write(lines)
 
 
 def readSelectiveDynamics(f="POSCAR"):
