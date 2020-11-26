@@ -111,7 +111,7 @@ def zipFile(filenames, zipcmd="gzip"):
     print("All above files will be compressed")
     answer = ""
     while answer != "y":
-        answer = raw_input(" are you sure ? (y/n) : ")
+        answer = input(" are you sure ? (y/n) : ")
         if answer == "n":
             print("nothing was done")
             exit(0)
