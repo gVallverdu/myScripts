@@ -1,0 +1,148 @@
+#!/usr/bin/python
+# -*- coding=utf-8 -*-
+
+"""
+citations
+---------
+
+NAME
+        citations - return the name of all bibitems cited in a tex file and eventually
+                    compare the list of these bibitems withe the bibentries found in a
+                    bibtex file.
+
+SYNTAX
+        citations [OPTIONS] file1.tex [file2.tex [file2.tex [file3.tex ...]] biblio.bib]
+
+DESCRIPTION
+        file_i.tex      latex files (at least one is needed)
+        biblio.bib      bibtex file (optional, only one)
+
+        look for all command \cite{bibitem} in tex files and return all bibitem. If a
+        bibtex file is provided, a comparison between the bibitems found in the tex file
+        and bibentries found in the bibtex file is done.
+
+        The command used for doing the citation reference can be modified via the -c option.
+
+OPTIONS
+        -h, --help
+                print this help and exit
+
+        -c cmd1,cmd2,...
+                cmd are the tex command used in order to insert citation
+                references. They must be given comma separated and without
+                white spaces.
+                default : cite,citet,citep
+
+TODO :
+        * It does not work if a line is broken inside a citation command.
+"""
+
+import sys
+import os
+
+__author__ = "Germain Vallverdu <germain.vallverdu@univ-pau.fr>"
+__licence__ = "GPL"
+
+def usage(code = 0):
+    """ usage """
+    print(__doc__)
+    exit(code)
+
+def citations(cmd, texlist, bibfile):
+    """ Read a LaTeX file and print all citations included in the document via the
+    cmd command.
+
+    args :
+        * cmd (list)    : list of commands used for citations
+        * bibfile (str) : bibtex file
+    
+    """
+
+    for tex in texlist:
+        if os.path.isfile(tex):
+            print("\n-------------------------------------------")
+            print("file : {0}".format(tex))
+            print("-------------------------------------------")
+            citedKeys = list()
+            for cmdi in cmd:
+                cited = searchCite(tex, cmdi)
+                for akey in cited:
+                    if akey not in citedKeys:
+                        citedKeys.append(akey)
+            citedKeys.sort()
+            for citedKey in citedKeys:
+                print(citedKey)
+            print(" ---------- {0} citations".format(len(citedKeys)))
+        else:
+            print("file {0} does not exist".format(tex))
+
+
+    if bibfile is not None:
+        if os.path.isfile(bibfile):
+            bibkeys = searchBibentry(bibfile)
+            print("\n-------------------------------------------")
+            print("bibkeys missing in bibtex file ")
+            print("-------------------------------------------")
+            for citedKey in citedKeys:
+                if citedKey not in bibkeys:
+                    print(citedKey)
+            print("\n-------------------------------------------")
+            print("bibkey not used in tex file")
+            print("-------------------------------------------")
+            for bibkey in bibkeys:
+                if bibkey not in citedKeys:
+                    print(bibkey)
+        else:
+            print("file {0} does not exist".format(bibfile))
+
+def searchBibentry(bibfile):
+    """ return all bibtex entry found in bibfile """
+
+    liste = list()
+    for line in open(bibfile, "r"):
+        if line[0] == "@":
+            entry = line.split("{")[1].strip()[:-1]
+            liste.append(entry.lower())
+    return liste
+
+def searchCite(source, cmd):
+    """ return all bibkey used in file source with the command cmd """
+    citeList = list()
+    for line in open(source, "r"):
+        if cmd in line:
+            for linePart in line.split("\\" + cmd + "{")[1:]:
+                citeContains = linePart.split("}")[0].split(",")
+                for bibkey in citeContains:
+                    if bibkey.strip().lower() not in citeList:
+                        citeList.append(bibkey.strip().lower())
+    return citeList
+
+if __name__ == "__main__":
+    cmd = ["cite", "citet", "citep"]
+    bibfile = None
+    texlist = list()
+    i = 1
+    if len(sys.argv) > 1:
+        while i < len(sys.argv):
+            if sys.argv[i] == "-h" or sys.argv[i] == "--help":
+                usage(0)
+
+            elif sys.argv[i] == "-c":
+                cmd = sys.argv[i+1].split(",")
+                i += 1
+
+            else:
+                if i == len(sys.argv)-1:
+                    if ".bib" in sys.argv[i]:
+                        bibfile = sys.argv[i]
+                    else:
+                        texlist.append(sys.argv[i])
+                else:
+                    texlist.append(sys.argv[i])
+
+            i += 1
+
+    else:
+        usage(0)
+
+    citations(cmd, texlist, bibfile)

@@ -1,0 +1,43 @@
+#!/usr/bin/python
+# -*- coding=utf-8 -*-
+
+import sys
+import os
+
+def figures():
+    """ Read a LaTeX file and print all figure included in the document via the
+    includegraphics command """
+
+    if len(sys.argv) > 1:
+        for tex in sys.argv[1:]:
+            if os.path.isfile(tex):
+                print("\n-------------------------------------------")
+                print("file : {0}".format(tex))
+                print("-------------------------------------------")
+                printFiguresName(tex)
+            else:
+                print("file {0} does not exist".format(tex))
+
+    else:
+        print("First argument must be a latex file name or a path to a latex file")
+        exit(1)
+
+def printFiguresName(source):
+    """ print figure name included in the tex code with the includegraphics command """
+    n = 0
+    print("{:>3s} {:>5s}     {:<s}".format("i", "line", "file name"))
+    print("-------------------------------------------")
+    for i, line in enumerate(open(source, "r"), 1):
+        line = line.strip()
+        if len(line) > 0 and line[0] == "%":
+            continue
+        elif "includegraphics" in line:
+            name = line.split("includegraphics")[1].split("{")[1].split("}")[0]
+            n += 1
+            print("{:3d} {:5d}     {:<s}".format(n, i, name))
+        elif "\end{document}" in line:
+            break
+    print("---------- {0} figures".format(n))
+
+if __name__ == "__main__":
+    figures()
