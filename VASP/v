@@ -2046,7 +2046,7 @@ def neighbors(iat, radius=3.0, struct="POSCAR"):
 
     print("Neighbors of atom %s_%d" % (s[iat].specie.symbol, iat + 1))
     for n in nlist:
-        site, d = n
+        site, d, _, _ = n
         print("    %3s: %8.3f" % (site.specie.symbol, d))
 
 
@@ -2069,7 +2069,7 @@ def all_neighbors(radius=3., struct="POSCAR"):
         neiglist.sort(key=lambda x: x[1])
         uneq = list()
         for neig in neiglist:
-            site, d = neig
+            site, d, _, _ = neig
             if len(uneq) == 0:
                 uneq.append((site, d, 1))
             else:
