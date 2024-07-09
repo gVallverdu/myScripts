@@ -217,6 +217,7 @@ except ImportError:
 
 try:
     import pymatgen as mg
+    from pymatgen.core import Structure
     from pymatgen.io.vasp.inputs import Incar, Potcar, Poscar, Kpoints
     from pymatgen.io.vasp.outputs import Outcar, Vasprun, Oszicar, Chgcar
     from pymatgen.electronic_structure.core import Spin, OrbitalType
@@ -861,7 +862,7 @@ def make_kpoints(fstruct="POSCAR", ndiv=20):
     49 (2), 299–312.
     """
     # read structure
-    struct = mg.Structure.from_file(fstruct)
+    struct = Structure.from_file(fstruct)
 
     # symmetry information
     struct_sym = SpacegroupAnalyzer(struct)
@@ -873,7 +874,7 @@ def make_kpoints(fstruct="POSCAR", ndiv=20):
 
     # Compute first brillouin zone
     ibz = HighSymmKpath(struct)
-    print("ibz type     : {0}".format(ibz.name))
+    print("ibz type     : {0}".format(ibz))
     plot_brillouin_zone_from_kpath(ibz, savefig="path.png")
 
     # print specific kpoints in the first brillouin zone
@@ -966,7 +967,7 @@ def coreLevel():
     AOname = ["s", "p", "d", "f"]
 
     cl = Outcar("OUTCAR").read_core_state_eigen()
-    symbol = [specie.symbol for specie in mg.Structure.from_file("POSCAR").species]
+    symbol = [specie.symbol for specie in Structure.from_file("POSCAR").species]
 
     if len(sys.argv) == 2:
         # try to read from INCAR
@@ -1402,12 +1403,12 @@ def charges(filename=None):
     # read atom names
     #
     if os.path.exists("POSCAR"):
-        struct = mg.Structure.from_file("POSCAR")
+        struct = Structure.from_file("POSCAR")
         atomNames = [el.symbol for el in struct.species]
         compo = struct.composition.as_dict()
 
     elif os.path.exists("CONTCAR"):
-        struct = mg.Structure.from_file("CONTCAR")
+        struct = Structure.from_file("CONTCAR")
         atomNames = [el.symbol for el in struct.species]
         compo = struct.composition.as_dict()
 
@@ -1544,11 +1545,11 @@ def bader_magmom(filename=None):
     # read atom names
     #
     if os.path.exists("POSCAR"):
-        struct = mg.Structure.from_file("POSCAR")
+        struct = Structure.from_file("POSCAR")
         atomNames = [el.symbol for el in struct.species]
 
     elif os.path.exists("CONTCAR"):
-        struct = mg.Structure.from_file("CONTCAR")
+        struct = Structure.from_file("CONTCAR")
         atomNames = [el.symbol for el in struct.species]
 
     else:
@@ -1829,7 +1830,7 @@ def get_forces(outfile):
 
     # read number of ions
     freeze = readSelectiveDynamics("POSCAR")
-    struct = mg.Structure.from_file("POSCAR")
+    struct = Structure.from_file("POSCAR")
     nat = len(freeze)
 
     # read EDIFFG
@@ -1959,8 +1960,8 @@ def get_deplacement(xmlfile="vasprun.xml", fs1=None, fs2=None):
             _die("ERROR, file %s does not exist" % fs1, 1)
         if not os.path.exists(fs2):
             _die("ERROR, file %s does not exist" % fs2, 1)
-        struct1 = mg.Structure.from_file(fs1)
-        struct2 = mg.Structure.from_file(fs2)
+        struct1 = Structure.from_file(fs1)
+        struct2 = Structure.from_file(fs2)
 
         if len(struct1.sites) != len(struct2.sites):
             _die("ERROR, structures are unconsistant", 1)
@@ -2021,7 +2022,7 @@ def make_supercell(nx=1, ny=1, nz=1):
 
     # build supercell
     print("read file : " + filename)
-    s = mg.Structure.from_file(filename)
+    s = Structure.from_file(filename)
     s.make_supercell([nx, ny, nz])
     p = Poscar(s)
     outfile = "POSCAR_%dx%dx%d.vasp" % (nx, ny, nz)
@@ -2038,7 +2039,7 @@ def neighbors(iat, radius=3.0, struct="POSCAR"):
 
     print("read file ----> %s\n" % struct)
 
-    s = mg.Structure.from_file(struct)
+    s = Structure.from_file(struct)
     nlist = s.get_neighbors(s[iat], radius)  # .sort(key = lambda x: x[1])
 
     # sort by neighbor distance
@@ -2059,7 +2060,7 @@ def all_neighbors(radius=3., struct="POSCAR"):
     th = 0.001
 
     # get all neighbors
-    s = mg.Structure.from_file(struct)
+    s = Structure.from_file(struct)
     allneig = s.get_all_neighbors(radius)
 
     iat = 0
