@@ -103,7 +103,7 @@ def get_options():
         "-o", "--output",
         help="Name of the output VMD script",
         metavar="VMDSCRIPT",
-        default="mo.vmd"
+        default="orbitals.vmd"
     )
 
     args = parser.parse_args()

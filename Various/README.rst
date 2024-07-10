@@ -1,6 +1,10 @@
 Various scripts
 ===============
 
+vmdmo.py
+    Python script that aims to set up a VMD script to load one or a series of cube files
+    and visualize the MO in VMD (Visual Molecular Dynamics).
+
 spectre.py
     Python module for spheric to cartesian and cartesian to spheric coordinates
     calculations.
