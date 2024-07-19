@@ -32,7 +32,8 @@ import os
 from math import sqrt, fabs
 
 import pymatgen as mg
-from pymatgen.io.vaspio.vasp_input import Potcar
+from pymatgen.io.vasp.inputs import Potcar
+from pymatgen.core import Structure
 
 __author__ = "Germain Vallverdu <germain.vallverdu@univ-pau.fr>"
 __licence__ = "GPL"
@@ -52,11 +53,11 @@ def getCharges():
     # read atom names
     #
     if os.path.exists("POSCAR"):
-        struct = mg.read_structure("POSCAR")
+        struct = Structure.from_file("POSCAR")
         atomNames = [el.symbol for el in struct.species]
 
     elif os.path.exists("CONTCAR"):
-        struct = mg.read_structure("CONTCAR")
+        struct = Structure.from_file("CONTCAR")
         atomNames = [el.symbol for el in struct.species]
 
     else:
