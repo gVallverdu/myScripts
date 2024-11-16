@@ -22,9 +22,9 @@ def local_frame(mol, origin=0, xat=1, yat=2, barycenter=False):
     """
 
     # set up the local frame
-    u = mol[origin].coords - mol[xat].coords
+    u = mol[xat - 1].coords - mol[origin - 1].coords
     u /= np.linalg.norm(u)
-    v = mol[yat].coords - mol[origin].coords
+    v = mol[yat - 1].coords - mol[origin - 1].coords
     v = v - np.dot(u, v) * u
     v /= np.linalg.norm(v)
     w = np.cross(u, v)
