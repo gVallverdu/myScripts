@@ -13,7 +13,8 @@ __licence__ = "GPL"
 
 import os
 import argparse
-import pymatgen as mg
+from pymatgen.core.sites import Site
+from pymatgen.core.structure import Lattice, Structure
 from pymatgen.io.vasp.inputs import Poscar
 
 def get_args():
@@ -70,7 +71,7 @@ def read_struct(filename):
                 i += 1
                 ligne = lignes[i]
             params = [float(val) for val in lignes[i+2].split()]
-            slab_lattice = mg.Lattice.from_lengths_and_angles(params[0:3], params[3:])
+            slab_lattice = Lattice.from_parameters(*params[0:3], *params[3:])
 
         if "COORDINATES OF THE ATOMS BELONGING TO THE SLAB" in ligne:
             sectionCoord = True
@@ -87,7 +88,7 @@ def read_struct(filename):
 
             z = int(ligne.split()[1])
             valeurs = [float(val) for val in ligne[56:].split()]
-            sites.append(mg.Site(z, valeurs))
+            sites.append(Site(z, valeurs))
 
     return slab_lattice, sites
 
@@ -113,8 +114,8 @@ if __name__ == "__main__":
     print("new c = {:12.7f}\n".format(newc))
 
     a, b, c = slab_lattice.abc
-    newLattice = mg.Lattice.from_lengths_and_angles((a, b, newc),
-                                                    (90., 90., slab_lattice.gamma))
+    newLattice = Lattice.from_parameters(a=a, b=b, c=newc,
+                                         alpha=90., beta=90., gamma=slab_lattice.gamma)
 
     # --------------------------------------------
     # decalage des coordonnees entre 0 et 1 dans (xy)
@@ -133,12 +134,12 @@ if __name__ == "__main__":
         else:
             coords[2] = coords[2] / newLattice.c
 
-        newSites.append(mg.Site(site.specie, coords))
+        newSites.append(Site(site.specie, coords))
 
     # -----------------------------------
     # make a structure and print POSCAR
     # -----------------------------------
-    struct = mg.Structure(newLattice, [site.specie for site in newSites], [site.coords for site in newSites])
+    struct = Structure(newLattice, [site.specie for site in newSites], [site.coords for site in newSites])
     struct.sort()
     Poscar(struct).write_file(args.poscar)
     print(struct)
